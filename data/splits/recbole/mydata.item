@@ -1,0 +1,1001 @@
+item_id:token	vendor:token	product_type:token	price_range:token
+1	Yody	Áo sơ mi	premium
+2	H&M	Quần short	premium
+3	H&M	Áo thun	mid
+4	H&M	Đầm	mid
+5	Uniqlo	Áo thun	premium
+6	H&M	Quần jean	premium
+7	Canifa	Áo sơ mi	mid
+8	H&M	Váy	premium
+9	Zara	Váy	mid
+10	IVY moda	Quần short	premium
+11	H&M	Váy	premium
+12	Zara	Quần short	premium
+13	Canifa	Áo khoác	mid
+14	H&M	Đầm	premium
+15	Canifa	Áo thun	premium
+16	Zara	Áo thun	premium
+17	H&M	Đầm	premium
+18	Yody	Đầm	premium
+19	Uniqlo	Quần short	mid
+20	Yody	Áo len	mid
+21	H&M	Váy	mid
+22	Uniqlo	Áo thun	mid
+23	Zara	Áo len	premium
+24	Uniqlo	Áo khoác	premium
+25	Zara	Áo sơ mi	mid
+26	Zara	Đầm	mid
+27	H&M	Áo len	mid
+28	Canifa	Áo sơ mi	mid
+29	Uniqlo	Áo thun	premium
+30	IVY moda	Quần short	mid
+31	Yody	Áo len	mid
+32	H&M	Váy	mid
+33	IVY moda	Đầm	mid
+34	Yody	Áo sơ mi	premium
+35	Zara	Áo sơ mi	premium
+36	Yody	Áo khoác	premium
+37	H&M	Áo sơ mi	premium
+38	Canifa	Áo len	mid
+39	Zara	Áo khoác	mid
+40	Canifa	Váy	premium
+41	Zara	Quần short	premium
+42	H&M	Áo sơ mi	mid
+43	IVY moda	Áo khoác	premium
+44	H&M	Đầm	mid
+45	Canifa	Đầm	premium
+46	Canifa	Áo thun	mid
+47	IVY moda	Áo thun	mid
+48	Zara	Áo khoác	mid
+49	H&M	Áo sơ mi	premium
+50	IVY moda	Áo len	premium
+51	H&M	Váy	premium
+52	Zara	Áo thun	premium
+53	Yody	Áo len	mid
+54	Uniqlo	Áo khoác	premium
+55	H&M	Quần short	premium
+56	Uniqlo	Đầm	mid
+57	Yody	Áo khoác	premium
+58	H&M	Váy	premium
+59	H&M	Quần short	mid
+60	Yody	Đầm	premium
+61	IVY moda	Áo sơ mi	mid
+62	Yody	Áo sơ mi	premium
+63	Yody	Quần jean	mid
+64	H&M	Váy	mid
+65	Uniqlo	Quần short	premium
+66	Canifa	Váy	premium
+67	IVY moda	Váy	mid
+68	Zara	Áo len	premium
+69	H&M	Váy	premium
+70	H&M	Quần short	mid
+71	H&M	Áo len	premium
+72	H&M	Quần jean	premium
+73	Canifa	Quần short	mid
+74	Canifa	Đầm	mid
+75	Canifa	Quần short	premium
+76	Uniqlo	Quần jean	premium
+77	Yody	Áo khoác	mid
+78	Zara	Áo thun	premium
+79	Canifa	Váy	mid
+80	IVY moda	Quần jean	premium
+81	Zara	Áo thun	mid
+82	Zara	Áo len	mid
+83	Canifa	Váy	mid
+84	Yody	Áo sơ mi	premium
+85	IVY moda	Váy	premium
+86	IVY moda	Áo thun	premium
+87	Zara	Áo len	premium
+88	Uniqlo	Váy	mid
+89	Zara	Đầm	premium
+90	Canifa	Váy	premium
+91	H&M	Váy	premium
+92	IVY moda	Váy	premium
+93	Zara	Áo khoác	premium
+94	Yody	Áo khoác	mid
+95	Zara	Áo sơ mi	premium
+96	Canifa	Quần short	premium
+97	Yody	Áo sơ mi	mid
+98	H&M	Đầm	mid
+99	Canifa	Quần jean	premium
+100	Uniqlo	Quần jean	mid
+101	Uniqlo	Quần short	premium
+102	Canifa	Váy	premium
+103	IVY moda	Đầm	premium
+104	H&M	Áo thun	premium
+105	Zara	Áo thun	premium
+106	Yody	Đầm	premium
+107	Zara	Đầm	mid
+108	IVY moda	Quần short	mid
+109	Canifa	Quần short	premium
+110	Uniqlo	Áo sơ mi	premium
+111	Uniqlo	Áo len	mid
+112	IVY moda	Áo khoác	premium
+113	Zara	Quần jean	premium
+114	H&M	Áo thun	mid
+115	IVY moda	Áo khoác	premium
+116	IVY moda	Áo len	premium
+117	Yody	Quần jean	mid
+118	Uniqlo	Áo sơ mi	mid
+119	H&M	Áo len	premium
+120	Yody	Quần short	premium
+121	IVY moda	Áo len	premium
+122	H&M	Áo khoác	mid
+123	H&M	Đầm	premium
+124	IVY moda	Váy	premium
+125	H&M	Áo len	premium
+126	Zara	Váy	mid
+127	H&M	Áo khoác	premium
+128	Zara	Áo thun	mid
+129	Uniqlo	Quần jean	premium
+130	Uniqlo	Quần jean	mid
+131	Uniqlo	Quần jean	premium
+132	IVY moda	Váy	mid
+133	Uniqlo	Váy	premium
+134	H&M	Áo khoác	premium
+135	Uniqlo	Quần jean	premium
+136	Uniqlo	Áo len	mid
+137	Uniqlo	Áo khoác	premium
+138	Yody	Áo thun	mid
+139	IVY moda	Quần short	premium
+140	IVY moda	Áo len	premium
+141	Uniqlo	Đầm	premium
+142	Zara	Áo sơ mi	mid
+143	Uniqlo	Quần jean	premium
+144	H&M	Váy	mid
+145	Uniqlo	Quần jean	mid
+146	IVY moda	Áo thun	mid
+147	H&M	Quần jean	premium
+148	Yody	Áo thun	mid
+149	Zara	Áo khoác	mid
+150	H&M	Áo sơ mi	premium
+151	Uniqlo	Quần short	premium
+152	IVY moda	Quần jean	mid
+153	IVY moda	Áo thun	premium
+154	Zara	Quần short	mid
+155	Zara	Áo khoác	mid
+156	Canifa	Váy	premium
+157	Yody	Váy	premium
+158	IVY moda	Quần short	mid
+159	Canifa	Đầm	premium
+160	Zara	Váy	mid
+161	Uniqlo	Áo sơ mi	premium
+162	Canifa	Đầm	premium
+163	H&M	Đầm	premium
+164	Zara	Áo sơ mi	mid
+165	Uniqlo	Áo sơ mi	premium
+166	Canifa	Quần jean	mid
+167	H&M	Đầm	premium
+168	Canifa	Đầm	premium
+169	Zara	Quần jean	mid
+170	Yody	Quần jean	mid
+171	Canifa	Đầm	premium
+172	Uniqlo	Váy	premium
+173	Uniqlo	Áo thun	mid
+174	Zara	Áo len	premium
+175	Uniqlo	Áo khoác	premium
+176	Yody	Áo thun	mid
+177	Canifa	Quần short	mid
+178	H&M	Áo thun	mid
+179	H&M	Quần short	mid
+180	IVY moda	Áo len	premium
+181	Canifa	Đầm	premium
+182	H&M	Áo khoác	mid
+183	H&M	Quần short	premium
+184	Uniqlo	Áo sơ mi	premium
+185	H&M	Quần short	mid
+186	Canifa	Quần short	premium
+187	Uniqlo	Áo len	mid
+188	Yody	Quần jean	mid
+189	IVY moda	Áo khoác	premium
+190	Canifa	Đầm	mid
+191	IVY moda	Áo khoác	mid
+192	IVY moda	Áo khoác	premium
+193	Yody	Áo sơ mi	premium
+194	Yody	Quần jean	premium
+195	Yody	Quần short	mid
+196	IVY moda	Váy	premium
+197	Zara	Đầm	premium
+198	Uniqlo	Váy	mid
+199	IVY moda	Quần short	mid
+200	Canifa	Áo len	premium
+201	Zara	Quần jean	premium
+202	H&M	Áo thun	premium
+203	Uniqlo	Áo len	mid
+204	Uniqlo	Váy	mid
+205	IVY moda	Áo len	premium
+206	Zara	Áo len	mid
+207	Zara	Quần short	mid
+208	H&M	Quần short	premium
+209	H&M	Áo sơ mi	mid
+210	Uniqlo	Quần jean	premium
+211	Canifa	Đầm	premium
+212	Canifa	Áo sơ mi	premium
+213	Yody	Quần short	premium
+214	Uniqlo	Quần short	premium
+215	H&M	Quần jean	premium
+216	H&M	Áo thun	premium
+217	IVY moda	Áo sơ mi	premium
+218	H&M	Áo sơ mi	premium
+219	Yody	Quần short	premium
+220	H&M	Áo sơ mi	mid
+221	H&M	Quần short	premium
+222	H&M	Áo khoác	mid
+223	H&M	Quần jean	mid
+224	Canifa	Quần jean	mid
+225	H&M	Quần jean	mid
+226	IVY moda	Đầm	mid
+227	Zara	Áo khoác	premium
+228	Zara	Áo thun	premium
+229	H&M	Áo khoác	premium
+230	Canifa	Áo khoác	premium
+231	Uniqlo	Áo thun	premium
+232	Zara	Áo khoác	premium
+233	Uniqlo	Đầm	premium
+234	Canifa	Váy	premium
+235	Zara	Đầm	premium
+236	Yody	Áo sơ mi	premium
+237	H&M	Đầm	mid
+238	IVY moda	Đầm	premium
+239	IVY moda	Quần jean	mid
+240	Canifa	Áo thun	premium
+241	Yody	Đầm	mid
+242	H&M	Đầm	mid
+243	Zara	Áo thun	premium
+244	IVY moda	Áo sơ mi	mid
+245	IVY moda	Áo len	mid
+246	H&M	Áo sơ mi	premium
+247	Zara	Quần jean	premium
+248	Canifa	Quần short	premium
+249	H&M	Quần short	mid
+250	Uniqlo	Áo khoác	premium
+251	H&M	Áo len	mid
+252	Uniqlo	Áo khoác	premium
+253	Zara	Áo khoác	mid
+254	Canifa	Áo len	premium
+255	IVY moda	Áo thun	premium
+256	IVY moda	Áo len	premium
+257	H&M	Quần short	premium
+258	Zara	Áo sơ mi	mid
+259	Yody	Đầm	premium
+260	Yody	Quần jean	premium
+261	Canifa	Áo thun	mid
+262	Canifa	Váy	premium
+263	Yody	Áo len	mid
+264	Yody	Áo thun	mid
+265	H&M	Áo len	mid
+266	Uniqlo	Áo sơ mi	mid
+267	Yody	Đầm	mid
+268	Yody	Áo len	premium
+269	IVY moda	Đầm	mid
+270	Yody	Áo thun	mid
+271	Yody	Áo len	premium
+272	H&M	Áo len	mid
+273	H&M	Quần jean	premium
+274	Canifa	Áo sơ mi	mid
+275	Yody	Váy	premium
+276	H&M	Quần jean	mid
+277	Uniqlo	Áo thun	premium
+278	Yody	Quần jean	mid
+279	Uniqlo	Quần jean	mid
+280	Canifa	Áo sơ mi	premium
+281	Yody	Áo khoác	mid
+282	Zara	Áo len	mid
+283	Zara	Áo thun	mid
+284	IVY moda	Áo sơ mi	premium
+285	Uniqlo	Áo thun	premium
+286	IVY moda	Quần short	mid
+287	Yody	Đầm	premium
+288	IVY moda	Áo khoác	mid
+289	Canifa	Áo khoác	mid
+290	Uniqlo	Áo khoác	mid
+291	Uniqlo	Quần short	mid
+292	H&M	Áo thun	premium
+293	Yody	Áo sơ mi	premium
+294	Canifa	Áo thun	mid
+295	Zara	Áo thun	premium
+296	Uniqlo	Áo khoác	premium
+297	IVY moda	Váy	mid
+298	Yody	Quần jean	premium
+299	Yody	Áo khoác	mid
+300	Yody	Áo len	premium
+301	Yody	Áo thun	mid
+302	IVY moda	Áo sơ mi	premium
+303	Canifa	Áo sơ mi	mid
+304	Zara	Quần jean	mid
+305	Canifa	Áo sơ mi	mid
+306	Zara	Áo khoác	mid
+307	Uniqlo	Quần short	mid
+308	IVY moda	Quần short	premium
+309	Uniqlo	Đầm	mid
+310	Uniqlo	Đầm	premium
+311	IVY moda	Áo khoác	mid
+312	Yody	Đầm	mid
+313	Zara	Áo thun	premium
+314	Uniqlo	Đầm	premium
+315	Uniqlo	Áo khoác	premium
+316	IVY moda	Quần short	premium
+317	IVY moda	Áo thun	premium
+318	Canifa	Váy	mid
+319	Canifa	Quần jean	mid
+320	IVY moda	Quần short	mid
+321	H&M	Quần jean	premium
+322	IVY moda	Áo khoác	premium
+323	Zara	Áo thun	mid
+324	Yody	Quần short	premium
+325	Uniqlo	Váy	premium
+326	H&M	Áo khoác	mid
+327	Yody	Váy	premium
+328	Zara	Áo thun	premium
+329	Canifa	Áo khoác	premium
+330	IVY moda	Quần jean	mid
+331	Canifa	Áo khoác	premium
+332	Zara	Áo len	premium
+333	Canifa	Áo thun	premium
+334	Uniqlo	Áo len	premium
+335	H&M	Áo sơ mi	premium
+336	Zara	Áo thun	premium
+337	Uniqlo	Áo sơ mi	premium
+338	Yody	Quần short	premium
+339	Yody	Áo thun	mid
+340	Uniqlo	Quần jean	mid
+341	Canifa	Quần jean	mid
+342	Yody	Áo khoác	premium
+343	Uniqlo	Quần short	premium
+344	Zara	Áo sơ mi	mid
+345	Uniqlo	Áo sơ mi	premium
+346	Canifa	Áo sơ mi	mid
+347	H&M	Đầm	premium
+348	Canifa	Áo thun	premium
+349	Yody	Áo sơ mi	premium
+350	Zara	Quần short	premium
+351	Canifa	Áo sơ mi	mid
+352	Uniqlo	Áo khoác	mid
+353	H&M	Áo khoác	premium
+354	Yody	Áo khoác	premium
+355	H&M	Áo khoác	premium
+356	IVY moda	Đầm	mid
+357	Yody	Đầm	premium
+358	Yody	Đầm	premium
+359	Uniqlo	Áo khoác	mid
+360	IVY moda	Quần jean	premium
+361	IVY moda	Áo sơ mi	mid
+362	Uniqlo	Quần jean	premium
+363	H&M	Quần short	premium
+364	H&M	Váy	mid
+365	IVY moda	Áo thun	mid
+366	Zara	Váy	premium
+367	IVY moda	Đầm	premium
+368	Zara	Áo len	premium
+369	Uniqlo	Áo sơ mi	premium
+370	Yody	Áo sơ mi	mid
+371	Zara	Áo khoác	premium
+372	Yody	Áo khoác	mid
+373	H&M	Đầm	mid
+374	IVY moda	Áo sơ mi	premium
+375	IVY moda	Quần jean	mid
+376	Yody	Đầm	mid
+377	IVY moda	Đầm	premium
+378	Zara	Đầm	mid
+379	Yody	Áo sơ mi	premium
+380	Yody	Váy	premium
+381	Zara	Áo thun	mid
+382	Uniqlo	Quần short	premium
+383	Yody	Áo sơ mi	premium
+384	H&M	Áo thun	premium
+385	Canifa	Váy	premium
+386	H&M	Áo thun	mid
+387	Canifa	Váy	mid
+388	Uniqlo	Áo len	premium
+389	Uniqlo	Áo thun	premium
+390	Canifa	Quần jean	mid
+391	H&M	Đầm	premium
+392	H&M	Áo khoác	premium
+393	Uniqlo	Đầm	mid
+394	Uniqlo	Quần short	mid
+395	IVY moda	Váy	mid
+396	Canifa	Quần jean	premium
+397	H&M	Áo khoác	premium
+398	IVY moda	Áo len	premium
+399	Yody	Áo sơ mi	mid
+400	Zara	Áo sơ mi	mid
+401	HP	Tai nghe	luxury
+402	Logitech	Bàn phím	luxury
+403	Dell	Màn hình	luxury
+404	Dell	Sạc dự phòng	luxury
+405	Apple	Sạc dự phòng	luxury
+406	Asus	Chuột	luxury
+407	Dell	Bàn phím	luxury
+408	Samsung	Sạc dự phòng	luxury
+409	HP	Tai nghe	luxury
+410	Apple	Laptop	luxury
+411	HP	Sạc dự phòng	luxury
+412	Xiaomi	Màn hình	luxury
+413	Logitech	Laptop	luxury
+414	Sony	Điện thoại	luxury
+415	Dell	Bàn phím	luxury
+416	Apple	Chuột	luxury
+417	Apple	Laptop	luxury
+418	Dell	Bàn phím	luxury
+419	Logitech	Sạc dự phòng	luxury
+420	Asus	Bàn phím	luxury
+421	Xiaomi	Bàn phím	luxury
+422	HP	Màn hình	luxury
+423	HP	Chuột	luxury
+424	Logitech	Chuột	luxury
+425	Dell	Sạc dự phòng	luxury
+426	Xiaomi	Chuột	luxury
+427	Dell	Bàn phím	luxury
+428	HP	Sạc dự phòng	luxury
+429	HP	Laptop	luxury
+430	HP	Điện thoại	luxury
+431	Samsung	Bàn phím	luxury
+432	HP	Tai nghe	luxury
+433	Logitech	Bàn phím	luxury
+434	Sony	Điện thoại	luxury
+435	HP	Sạc dự phòng	luxury
+436	Xiaomi	Bàn phím	luxury
+437	Apple	Chuột	luxury
+438	Asus	Điện thoại	luxury
+439	Samsung	Bàn phím	luxury
+440	Sony	Màn hình	luxury
+441	Dell	Điện thoại	luxury
+442	Apple	Tai nghe	luxury
+443	Logitech	Màn hình	luxury
+444	Logitech	Tai nghe	luxury
+445	Xiaomi	Laptop	luxury
+446	Apple	Tai nghe	luxury
+447	Asus	Laptop	luxury
+448	Logitech	Bàn phím	luxury
+449	Samsung	Laptop	luxury
+450	Sony	Điện thoại	luxury
+451	Logitech	Tai nghe	luxury
+452	Apple	Tai nghe	luxury
+453	Xiaomi	Bàn phím	luxury
+454	Xiaomi	Laptop	luxury
+455	Logitech	Sạc dự phòng	luxury
+456	Asus	Bàn phím	luxury
+457	Dell	Màn hình	luxury
+458	Apple	Tai nghe	luxury
+459	Xiaomi	Laptop	luxury
+460	Apple	Sạc dự phòng	luxury
+461	Dell	Chuột	luxury
+462	Xiaomi	Chuột	luxury
+463	Sony	Sạc dự phòng	luxury
+464	Samsung	Sạc dự phòng	luxury
+465	Apple	Sạc dự phòng	luxury
+466	Dell	Sạc dự phòng	luxury
+467	Dell	Chuột	luxury
+468	Dell	Điện thoại	luxury
+469	Logitech	Sạc dự phòng	luxury
+470	Asus	Laptop	luxury
+471	Logitech	Laptop	luxury
+472	Xiaomi	Tai nghe	luxury
+473	Logitech	Laptop	luxury
+474	HP	Màn hình	luxury
+475	Apple	Bàn phím	luxury
+476	Asus	Bàn phím	luxury
+477	Sony	Laptop	luxury
+478	Asus	Màn hình	luxury
+479	Dell	Chuột	luxury
+480	HP	Sạc dự phòng	luxury
+481	Xiaomi	Màn hình	luxury
+482	Logitech	Điện thoại	luxury
+483	Sony	Bàn phím	luxury
+484	Xiaomi	Tai nghe	luxury
+485	Apple	Tai nghe	luxury
+486	Xiaomi	Chuột	luxury
+487	Sony	Tai nghe	luxury
+488	Dell	Laptop	luxury
+489	HP	Điện thoại	luxury
+490	Xiaomi	Màn hình	luxury
+491	Apple	Chuột	luxury
+492	Apple	Điện thoại	luxury
+493	Dell	Laptop	luxury
+494	Dell	Laptop	luxury
+495	Sony	Màn hình	luxury
+496	Asus	Điện thoại	luxury
+497	Apple	Bàn phím	luxury
+498	Samsung	Laptop	luxury
+499	Asus	Điện thoại	luxury
+500	Apple	Sạc dự phòng	luxury
+501	HP	Sạc dự phòng	luxury
+502	Dell	Điện thoại	luxury
+503	Sony	Laptop	luxury
+504	Xiaomi	Laptop	luxury
+505	Logitech	Sạc dự phòng	luxury
+506	HP	Laptop	luxury
+507	Dell	Tai nghe	luxury
+508	Asus	Sạc dự phòng	luxury
+509	HP	Sạc dự phòng	luxury
+510	HP	Bàn phím	luxury
+511	HP	Màn hình	luxury
+512	Asus	Chuột	luxury
+513	HP	Màn hình	luxury
+514	Logitech	Màn hình	luxury
+515	Samsung	Điện thoại	luxury
+516	Apple	Laptop	luxury
+517	Logitech	Điện thoại	luxury
+518	Samsung	Bàn phím	luxury
+519	HP	Tai nghe	luxury
+520	Sony	Laptop	luxury
+521	Sony	Tai nghe	luxury
+522	Apple	Bàn phím	luxury
+523	Samsung	Điện thoại	luxury
+524	HP	Chuột	luxury
+525	Apple	Điện thoại	luxury
+526	Sony	Màn hình	luxury
+527	HP	Chuột	luxury
+528	Sony	Sạc dự phòng	luxury
+529	Xiaomi	Chuột	luxury
+530	Xiaomi	Màn hình	luxury
+531	Sony	Điện thoại	luxury
+532	HP	Tai nghe	luxury
+533	Sony	Chuột	luxury
+534	Apple	Laptop	luxury
+535	Logitech	Điện thoại	luxury
+536	Sony	Bàn phím	luxury
+537	Samsung	Tai nghe	luxury
+538	HP	Bàn phím	luxury
+539	Asus	Màn hình	luxury
+540	Apple	Chuột	luxury
+541	Asus	Tai nghe	luxury
+542	Apple	Điện thoại	luxury
+543	Samsung	Tai nghe	luxury
+544	Samsung	Chuột	luxury
+545	Logitech	Bàn phím	luxury
+546	Samsung	Tai nghe	luxury
+547	Samsung	Chuột	luxury
+548	HP	Chuột	luxury
+549	HP	Tai nghe	luxury
+550	Dell	Laptop	luxury
+551	Asus	Chuột	luxury
+552	Xiaomi	Sạc dự phòng	luxury
+553	Dell	Sạc dự phòng	luxury
+554	HP	Bàn phím	luxury
+555	Samsung	Sạc dự phòng	luxury
+556	Asus	Màn hình	luxury
+557	HP	Tai nghe	luxury
+558	Dell	Tai nghe	luxury
+559	Samsung	Bàn phím	luxury
+560	Sony	Sạc dự phòng	luxury
+561	Dell	Sạc dự phòng	luxury
+562	HP	Chuột	luxury
+563	Dell	Laptop	luxury
+564	Sony	Điện thoại	luxury
+565	Sony	Chuột	luxury
+566	Samsung	Màn hình	luxury
+567	Sony	Tai nghe	luxury
+568	HP	Điện thoại	luxury
+569	Asus	Laptop	luxury
+570	Dell	Sạc dự phòng	luxury
+571	Apple	Điện thoại	luxury
+572	Dell	Tai nghe	luxury
+573	HP	Bàn phím	luxury
+574	Logitech	Sạc dự phòng	luxury
+575	Apple	Chuột	luxury
+576	Xiaomi	Tai nghe	luxury
+577	Logitech	Tai nghe	luxury
+578	Logitech	Chuột	luxury
+579	Dell	Chuột	luxury
+580	Sony	Bàn phím	luxury
+581	HP	Bàn phím	luxury
+582	Samsung	Điện thoại	luxury
+583	HP	Màn hình	luxury
+584	Xiaomi	Laptop	luxury
+585	Apple	Màn hình	luxury
+586	Logitech	Chuột	luxury
+587	Sony	Sạc dự phòng	luxury
+588	Asus	Sạc dự phòng	luxury
+589	Sony	Bàn phím	luxury
+590	Sony	Bàn phím	luxury
+591	Samsung	Laptop	luxury
+592	HP	Sạc dự phòng	luxury
+593	Dell	Chuột	luxury
+594	Samsung	Điện thoại	luxury
+595	Samsung	Chuột	luxury
+596	Sony	Chuột	luxury
+597	Sony	Điện thoại	luxury
+598	Apple	Chuột	luxury
+599	HP	Chuột	luxury
+600	Asus	Chuột	luxury
+601	Samsung	Điện thoại	luxury
+602	Logitech	Điện thoại	luxury
+603	Logitech	Chuột	mid
+604	Sony	Tai nghe	luxury
+605	HP	Màn hình	luxury
+606	Asus	Màn hình	luxury
+607	Dell	Laptop	luxury
+608	Samsung	Bàn phím	luxury
+609	Apple	Sạc dự phòng	luxury
+610	HP	Laptop	luxury
+611	Logitech	Tai nghe	luxury
+612	Sony	Sạc dự phòng	premium
+613	Apple	Màn hình	luxury
+614	Apple	Chuột	luxury
+615	Samsung	Tai nghe	luxury
+616	Xiaomi	Sạc dự phòng	luxury
+617	Sony	Laptop	luxury
+618	HP	Màn hình	luxury
+619	Samsung	Tai nghe	luxury
+620	Samsung	Điện thoại	luxury
+621	HP	Chuột	luxury
+622	Dell	Sạc dự phòng	luxury
+623	Samsung	Bàn phím	luxury
+624	Samsung	Sạc dự phòng	luxury
+625	Dell	Sạc dự phòng	luxury
+626	Sony	Chuột	luxury
+627	Samsung	Sạc dự phòng	luxury
+628	HP	Chuột	luxury
+629	Samsung	Sạc dự phòng	luxury
+630	Samsung	Chuột	luxury
+631	Dell	Màn hình	luxury
+632	Samsung	Sạc dự phòng	luxury
+633	HP	Sạc dự phòng	luxury
+634	Dell	Tai nghe	luxury
+635	Xiaomi	Màn hình	luxury
+636	Apple	Màn hình	luxury
+637	Logitech	Bàn phím	luxury
+638	Asus	Sạc dự phòng	luxury
+639	Sony	Tai nghe	luxury
+640	Asus	Laptop	luxury
+641	Sony	Chuột	luxury
+642	HP	Sạc dự phòng	luxury
+643	HP	Sạc dự phòng	luxury
+644	Logitech	Sạc dự phòng	luxury
+645	HP	Laptop	luxury
+646	Dell	Bàn phím	luxury
+647	Asus	Chuột	luxury
+648	Logitech	Tai nghe	luxury
+649	Xiaomi	Sạc dự phòng	luxury
+650	HP	Màn hình	luxury
+651	HP	Điện thoại	luxury
+652	Logitech	Laptop	luxury
+653	Samsung	Laptop	luxury
+654	Logitech	Điện thoại	luxury
+655	Sony	Laptop	luxury
+656	HP	Màn hình	luxury
+657	Logitech	Bàn phím	luxury
+658	Logitech	Tai nghe	luxury
+659	Sony	Màn hình	premium
+660	HP	Laptop	luxury
+661	Dell	Chuột	luxury
+662	Dell	Chuột	luxury
+663	Apple	Bàn phím	luxury
+664	Logitech	Màn hình	luxury
+665	Logitech	Sạc dự phòng	luxury
+666	Samsung	Màn hình	luxury
+667	Logitech	Điện thoại	luxury
+668	Dell	Chuột	luxury
+669	Samsung	Màn hình	luxury
+670	Dell	Bàn phím	luxury
+671	Logitech	Laptop	luxury
+672	Sony	Laptop	luxury
+673	Logitech	Laptop	luxury
+674	Apple	Chuột	luxury
+675	Dell	Chuột	luxury
+676	HP	Chuột	luxury
+677	Dell	Laptop	luxury
+678	Asus	Điện thoại	luxury
+679	Sony	Chuột	luxury
+680	Xiaomi	Màn hình	luxury
+681	Dell	Chuột	luxury
+682	Dell	Điện thoại	luxury
+683	Sony	Màn hình	luxury
+684	Sony	Màn hình	luxury
+685	Sony	Bàn phím	luxury
+686	Xiaomi	Bàn phím	luxury
+687	Dell	Tai nghe	luxury
+688	Asus	Chuột	luxury
+689	Sony	Sạc dự phòng	luxury
+690	Asus	Chuột	luxury
+691	Asus	Tai nghe	luxury
+692	Sony	Sạc dự phòng	luxury
+693	Logitech	Màn hình	luxury
+694	Sony	Laptop	luxury
+695	Sony	Laptop	luxury
+696	Logitech	Tai nghe	luxury
+697	HP	Màn hình	luxury
+698	Asus	Tai nghe	luxury
+699	Apple	Sạc dự phòng	luxury
+700	Asus	Màn hình	luxury
+701	Elmich	Nồi	luxury
+702	Elmich	Bộ nồi	luxury
+703	Lock&Lock	Bình giữ nhiệt	luxury
+704	Philips	Bộ nồi	luxury
+705	Philips	Bình giữ nhiệt	luxury
+706	Lock&Lock	Bình đun	luxury
+707	Philips	Bình đun	premium
+708	Philips	Nồi	premium
+709	Lock&Lock	Bộ nồi	luxury
+710	Lock&Lock	Quánh	luxury
+711	Panasonic	Máy xay	luxury
+712	Sunhouse	Bình giữ nhiệt	premium
+713	Sunhouse	Bình đun	luxury
+714	Lock&Lock	Máy xay	luxury
+715	Lock&Lock	Quánh	luxury
+716	Panasonic	Bình đun	luxury
+717	Lock&Lock	Bộ nồi	premium
+718	Panasonic	Quánh	luxury
+719	Lock&Lock	Nồi	luxury
+720	Philips	Máy xay	luxury
+721	Elmich	Chảo	premium
+722	Sunhouse	Bộ nồi	luxury
+723	Lock&Lock	Chảo	luxury
+724	Elmich	Máy xay	luxury
+725	Sunhouse	Chảo	luxury
+726	Philips	Bình giữ nhiệt	premium
+727	Sunhouse	Bộ nồi	luxury
+728	Lock&Lock	Chảo	luxury
+729	Elmich	Chảo	luxury
+730	Lock&Lock	Bình giữ nhiệt	luxury
+731	Philips	Bình đun	luxury
+732	Sunhouse	Bình giữ nhiệt	luxury
+733	Philips	Nồi	luxury
+734	Philips	Nồi	premium
+735	Lock&Lock	Chảo	luxury
+736	Lock&Lock	Nồi	premium
+737	Philips	Máy xay	premium
+738	Elmich	Chảo	luxury
+739	Panasonic	Bình đun	luxury
+740	Panasonic	Bộ nồi	luxury
+741	Panasonic	Bình đun	premium
+742	Elmich	Chảo	luxury
+743	Lock&Lock	Quánh	luxury
+744	Philips	Máy xay	luxury
+745	Elmich	Máy xay	luxury
+746	Elmich	Bộ nồi	luxury
+747	Elmich	Quánh	luxury
+748	Lock&Lock	Máy xay	luxury
+749	Lock&Lock	Bình giữ nhiệt	luxury
+750	Philips	Bình đun	premium
+751	Panasonic	Chảo	luxury
+752	Sunhouse	Bình giữ nhiệt	luxury
+753	Panasonic	Chảo	luxury
+754	Lock&Lock	Máy xay	premium
+755	Philips	Bình giữ nhiệt	luxury
+756	Elmich	Bình đun	luxury
+757	Lock&Lock	Bình đun	luxury
+758	Elmich	Chảo	luxury
+759	Sunhouse	Nồi	luxury
+760	Panasonic	Bình giữ nhiệt	luxury
+761	Lock&Lock	Nồi	luxury
+762	Panasonic	Bộ nồi	luxury
+763	Panasonic	Bộ nồi	luxury
+764	Lock&Lock	Nồi	luxury
+765	Sunhouse	Máy xay	luxury
+766	Panasonic	Bình đun	luxury
+767	Lock&Lock	Bộ nồi	premium
+768	Elmich	Bình đun	luxury
+769	Panasonic	Bình giữ nhiệt	luxury
+770	Panasonic	Quánh	mid
+771	Sunhouse	Máy xay	luxury
+772	Sunhouse	Chảo	luxury
+773	Sunhouse	Bình đun	luxury
+774	Philips	Chảo	mid
+775	Panasonic	Bình giữ nhiệt	luxury
+776	Panasonic	Bộ nồi	luxury
+777	Sunhouse	Quánh	luxury
+778	Elmich	Nồi	premium
+779	Philips	Quánh	luxury
+780	Philips	Chảo	luxury
+781	Elmich	Bình giữ nhiệt	luxury
+782	Elmich	Quánh	premium
+783	Philips	Bộ nồi	premium
+784	Sunhouse	Chảo	luxury
+785	Lock&Lock	Máy xay	luxury
+786	Elmich	Bình đun	premium
+787	Sunhouse	Bình đun	luxury
+788	Elmich	Bình giữ nhiệt	luxury
+789	Panasonic	Nồi	luxury
+790	Philips	Bộ nồi	premium
+791	Lock&Lock	Bình đun	luxury
+792	Philips	Bình giữ nhiệt	luxury
+793	Philips	Bình giữ nhiệt	luxury
+794	Elmich	Chảo	luxury
+795	Sunhouse	Bộ nồi	premium
+796	Elmich	Bình giữ nhiệt	premium
+797	Elmich	Quánh	luxury
+798	Lock&Lock	Nồi	premium
+799	Sunhouse	Bộ nồi	luxury
+800	Sunhouse	Máy xay	luxury
+801	Elmich	Bộ nồi	mid
+802	Elmich	Chảo	mid
+803	Panasonic	Bình giữ nhiệt	luxury
+804	Philips	Bộ nồi	luxury
+805	Elmich	Bộ nồi	luxury
+806	Elmich	Máy xay	luxury
+807	Elmich	Bình đun	luxury
+808	Panasonic	Máy xay	premium
+809	Elmich	Bình giữ nhiệt	luxury
+810	Sunhouse	Chảo	premium
+811	Sunhouse	Quánh	premium
+812	Sunhouse	Bình giữ nhiệt	mid
+813	Philips	Quánh	luxury
+814	Sunhouse	Nồi	luxury
+815	Sunhouse	Bộ nồi	premium
+816	Sunhouse	Bộ nồi	luxury
+817	Sunhouse	Quánh	premium
+818	Philips	Quánh	luxury
+819	Sunhouse	Nồi	luxury
+820	Philips	Quánh	luxury
+821	Lock&Lock	Chảo	luxury
+822	Sunhouse	Máy xay	premium
+823	Sunhouse	Máy xay	luxury
+824	Lock&Lock	Nồi	luxury
+825	Philips	Máy xay	premium
+826	Sunhouse	Bình giữ nhiệt	luxury
+827	Lock&Lock	Máy xay	premium
+828	Sunhouse	Bình đun	luxury
+829	Lock&Lock	Nồi	luxury
+830	Elmich	Chảo	premium
+831	Sunhouse	Máy xay	luxury
+832	Panasonic	Máy xay	premium
+833	Panasonic	Máy xay	mid
+834	Panasonic	Bộ nồi	premium
+835	Elmich	Bộ nồi	luxury
+836	Panasonic	Quánh	luxury
+837	Lock&Lock	Nồi	luxury
+838	Elmich	Quánh	luxury
+839	Philips	Bộ nồi	premium
+840	Lock&Lock	Quánh	premium
+841	Sunhouse	Bình đun	luxury
+842	Philips	Chảo	luxury
+843	Elmich	Chảo	luxury
+844	Panasonic	Bình giữ nhiệt	luxury
+845	Sunhouse	Bình giữ nhiệt	luxury
+846	Lock&Lock	Bình giữ nhiệt	luxury
+847	Lock&Lock	Bình giữ nhiệt	luxury
+848	Elmich	Chảo	premium
+849	Sunhouse	Nồi	luxury
+850	Sunhouse	Máy xay	luxury
+851	Sunhouse	Nồi	luxury
+852	Lock&Lock	Quánh	mid
+853	Panasonic	Quánh	luxury
+854	Lock&Lock	Quánh	luxury
+855	Philips	Quánh	luxury
+856	Lock&Lock	Bình đun	luxury
+857	Sunhouse	Bình đun	luxury
+858	Philips	Nồi	luxury
+859	Sunhouse	Bình đun	luxury
+860	Lock&Lock	Quánh	premium
+861	Lock&Lock	Bình giữ nhiệt	luxury
+862	Elmich	Máy xay	luxury
+863	Lock&Lock	Nồi	luxury
+864	Philips	Bộ nồi	premium
+865	Philips	Máy xay	premium
+866	Lock&Lock	Bình giữ nhiệt	luxury
+867	Panasonic	Nồi	luxury
+868	Elmich	Chảo	premium
+869	Lock&Lock	Quánh	luxury
+870	Sunhouse	Nồi	luxury
+871	Sunhouse	Chảo	luxury
+872	Panasonic	Chảo	premium
+873	Sunhouse	Bình giữ nhiệt	luxury
+874	Panasonic	Nồi	luxury
+875	Sunhouse	Quánh	luxury
+876	Panasonic	Bộ nồi	premium
+877	Philips	Máy xay	luxury
+878	Lock&Lock	Máy xay	premium
+879	Panasonic	Bình đun	mid
+880	Lock&Lock	Nồi	premium
+881	Sunhouse	Bình đun	luxury
+882	Elmich	Bình giữ nhiệt	luxury
+883	Philips	Bộ nồi	luxury
+884	Lock&Lock	Bộ nồi	premium
+885	Philips	Máy xay	luxury
+886	Panasonic	Bộ nồi	luxury
+887	Philips	Bình đun	premium
+888	Panasonic	Bộ nồi	premium
+889	Elmich	Máy xay	luxury
+890	Lock&Lock	Bình đun	premium
+891	Sunhouse	Nồi	luxury
+892	Sunhouse	Quánh	luxury
+893	Lock&Lock	Bình đun	luxury
+894	Philips	Quánh	luxury
+895	Philips	Quánh	luxury
+896	Lock&Lock	Nồi	luxury
+897	Elmich	Bình giữ nhiệt	premium
+898	Sunhouse	Quánh	luxury
+899	Elmich	Nồi	luxury
+900	Elmich	Nồi	mid
+901	CP	Trứng	mid
+902	Neptune	Nước mắm	mid
+903	Neptune	Trứng	mid
+904	Neptune	Nước mắm	mid
+905	Neptune	Dầu ăn	mid
+906	Vinamilk	Nước mắm	mid
+907	Neptune	Gạo	mid
+908	TH True Milk	Sữa tươi	mid
+909	Neptune	Trứng	mid
+910	Vissan	Dầu ăn	mid
+911	Vissan	Sữa tươi	mid
+912	CP	Sữa tươi	mid
+913	Vissan	Gạo	budget
+914	Neptune	Nước mắm	mid
+915	Neptune	Trứng	mid
+916	TH True Milk	Trứng	mid
+917	Vinamilk	Sữa tươi	mid
+918	CP	Trứng	mid
+919	Neptune	Nước mắm	mid
+920	CP	Dầu ăn	budget
+921	Vissan	Gạo	budget
+922	Vissan	Dầu ăn	mid
+923	Vinamilk	Dầu ăn	mid
+924	TH True Milk	Nước mắm	mid
+925	CP	Dầu ăn	mid
+926	CP	Sữa tươi	mid
+927	TH True Milk	Gạo	budget
+928	Vissan	Sữa tươi	mid
+929	CP	Trứng	mid
+930	CP	Dầu ăn	mid
+931	TH True Milk	Gạo	budget
+932	Vissan	Trứng	mid
+933	TH True Milk	Sữa tươi	mid
+934	TH True Milk	Gạo	mid
+935	Neptune	Trứng	budget
+936	Vissan	Dầu ăn	mid
+937	Vissan	Dầu ăn	budget
+938	Neptune	Sữa tươi	budget
+939	Neptune	Sữa tươi	mid
+940	Neptune	Dầu ăn	mid
+941	Neptune	Gạo	budget
+942	Vissan	Nước mắm	mid
+943	Vinamilk	Trứng	mid
+944	Vinamilk	Gạo	budget
+945	TH True Milk	Dầu ăn	mid
+946	CP	Sữa tươi	mid
+947	Neptune	Nước mắm	budget
+948	Neptune	Dầu ăn	mid
+949	Vissan	Dầu ăn	mid
+950	Vissan	Trứng	budget
+951	Vinamilk	Gạo	mid
+952	Vissan	Dầu ăn	budget
+953	Vinamilk	Trứng	mid
+954	Vissan	Dầu ăn	mid
+955	Vinamilk	Sữa tươi	mid
+956	Vinamilk	Trứng	mid
+957	TH True Milk	Dầu ăn	mid
+958	Vissan	Sữa tươi	budget
+959	Vissan	Dầu ăn	budget
+960	CP	Gạo	mid
+961	Neptune	Sữa tươi	mid
+962	CP	Dầu ăn	mid
+963	Vissan	Trứng	budget
+964	TH True Milk	Trứng	mid
+965	Neptune	Sữa tươi	mid
+966	CP	Trứng	budget
+967	CP	Sữa tươi	budget
+968	Vinamilk	Trứng	budget
+969	Vinamilk	Sữa tươi	mid
+970	Vissan	Nước mắm	mid
+971	Vinamilk	Sữa tươi	budget
+972	TH True Milk	Nước mắm	mid
+973	Vinamilk	Trứng	mid
+974	Neptune	Sữa tươi	budget
+975	CP	Nước mắm	mid
+976	Vissan	Nước mắm	mid
+977	Neptune	Gạo	budget
+978	Vissan	Nước mắm	mid
+979	Vissan	Dầu ăn	mid
+980	Vissan	Gạo	budget
+981	Neptune	Nước mắm	mid
+982	CP	Dầu ăn	budget
+983	Neptune	Nước mắm	mid
+984	Vissan	Sữa tươi	mid
+985	TH True Milk	Sữa tươi	mid
+986	Neptune	Nước mắm	budget
+987	Neptune	Dầu ăn	mid
+988	Neptune	Trứng	mid
+989	Vissan	Sữa tươi	mid
+990	Vissan	Dầu ăn	mid
+991	Vinamilk	Dầu ăn	budget
+992	CP	Gạo	budget
+993	TH True Milk	Trứng	mid
+994	TH True Milk	Nước mắm	budget
+995	TH True Milk	Nước mắm	mid
+996	Neptune	Gạo	mid
+997	CP	Nước mắm	budget
+998	Vissan	Nước mắm	mid
+999	CP	Dầu ăn	mid
+1000	CP	Gạo	mid

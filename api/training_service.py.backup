@@ -1,0 +1,997 @@
+"""
+Python Training Service for AI Models
+Exposes Flask API endpoints to train recommendation and trending models
+"""
+
+from flask import Flask, request, jsonify
+import pickle
+import torch
+import traceback
+import logging
+from pathlib import Path
+
+# Import modules
+from .config import config
+from .database import update_training_log, update_store_ai_status
+from .trainers import RecommendationTrainer, TrendingTrainer
+from .cache_manager import cache_recommendations, cache_trending
+
+app = Flask(__name__)
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+def save_recommendation_model(store_id, model_data):
+    """Save recommendation model to disk"""
+    model_dir = config.MODEL_SAVE_DIR / f'store_{store_id}' / 'recommendation'
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_path = model_dir / 'neumf_model.pth'
+    
+    try:
+        logger.info(f"Step 1: Extracting raw data for store {store_id}...")
+        
+        # Extract ORDER interactions (weight = 1.0)
+        cur.execute("""
+            SELECT 
+                o.customer_id as user_id,
+                li.variant_id as item_id,
+                v.product_id,
+                o.store_id,
+                COALESCE(o.completed_on, o.confirmed_on, o.created_at) as timestamp,
+                li.quantity,
+                li.price,
+                'order' as action_type,
+                1.0 as weight,
+                p.name as product_name,
+                vn.name as vendor,
+                pt.name as product_type
+            FROM orders o
+            JOIN line_items li ON li.reference_id = o.id AND li.reference_type = 'order'
+            JOIN variants v ON v.id = li.variant_id
+            JOIN products p ON p.id = v.product_id
+            LEFT JOIN vendors vn ON vn.id = p.vendor_id
+            LEFT JOIN product_types pt ON pt.id = p.product_type_id
+            WHERE o.store_id = %s 
+                AND o.status IN ('completed', 'confirmed')
+                AND o.financial_status IN ('paid', 'partial_paid')
+                AND o.customer_id IS NOT NULL
+                AND li.variant_id IS NOT NULL
+                AND o.deleted_at IS NULL
+                AND li.deleted_at IS NULL
+        """, (store_id,))
+        
+        order_interactions = cur.fetchall()
+        
+        # Extract CART interactions (weight = 0.3)
+        cur.execute("""
+            SELECT 
+                c.customer_id as user_id,
+                li.variant_id as item_id,
+                v.product_id,
+                c.store_id,
+                c.updated_at as timestamp,
+                li.quantity,
+                li.price,
+                'cart' as action_type,
+                0.3 as weight,
+                p.name as product_name,
+                vn.name as vendor,
+                pt.name as product_type
+            FROM carts c
+            JOIN line_items li ON li.reference_id = c.id AND li.reference_type = 'cart'
+            JOIN variants v ON v.id = li.variant_id
+            JOIN products p ON p.id = v.product_id
+            LEFT JOIN vendors vn ON vn.id = p.vendor_id
+            LEFT JOIN product_types pt ON pt.id = p.product_type_id
+            WHERE c.store_id = %s
+                AND c.customer_id IS NOT NULL
+                AND li.variant_id IS NOT NULL
+                AND c.deleted_at IS NULL
+                AND li.deleted_at IS NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM orders o 
+                    WHERE o.cart_id = c.id 
+                    AND o.status IN ('completed', 'confirmed')
+                )
+        """, (store_id,))
+        
+        cart_interactions = cur.fetchall()
+        
+        # Combine interactions
+        all_interactions = order_interactions + cart_interactions
+        
+        if len(all_interactions) == 0:
+            raise ValueError(f"No interaction data found for store {store_id}")
+        
+        df = pd.DataFrame(all_interactions)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        
+        logger.info(f"  ✅ Order interactions: {len(order_interactions):,}")
+        logger.info(f"  ✅ Cart interactions: {len(cart_interactions):,}")
+        logger.info(f"  ✅ Total interactions: {len(df):,}")
+        logger.info(f"  ✅ Unique users: {df['user_id'].nunique()}")
+        logger.info(f"  ✅ Unique items: {df['item_id'].nunique()}")
+        
+        # Validate minimum requirements
+        if df['user_id'].nunique() < 10:
+            raise ValueError(f"Insufficient users: need at least 10, got {df['user_id'].nunique()}")
+        
+        if df['item_id'].nunique() < 5:
+            raise ValueError(f"Insufficient items: need at least 5, got {df['item_id'].nunique()}")
+        
+        return df
+        
+    finally:
+        cur.close()
+        conn.close()
+
+
+def extract_time_series_data(store_id, days_back=180):
+    """
+    Extract and engineer time series features for trending prediction
+    Following the validated feature engineering pipeline
+    """
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        start_date = datetime.now() - timedelta(days=days_back)
+        
+        logger.info(f"Step 1: Extracting raw time series data (last {days_back} days)...")
+        
+        cur.execute("""
+            SELECT 
+                v.product_id as item_id,
+                li.variant_id,
+                DATE(COALESCE(o.completed_on, o.confirmed_on, o.created_at)) as date,
+                SUM(li.quantity) as daily_sales,
+                SUM(li.quantity * li.price) as daily_revenue,
+                COUNT(DISTINCT o.id) as order_count,
+                AVG(li.price) as avg_price,
+                p.name as product_name,
+                vn.name as vendor,
+                pt.name as product_type
+            FROM orders o
+            JOIN line_items li ON li.reference_id = o.id AND li.reference_type = 'order'
+            JOIN variants v ON v.id = li.variant_id
+            JOIN products p ON p.id = v.product_id
+            LEFT JOIN vendors vn ON vn.id = p.vendor_id
+            LEFT JOIN product_types pt ON pt.id = p.product_type_id
+            WHERE o.store_id = %s 
+                AND o.status IN ('completed', 'confirmed')
+                AND o.financial_status IN ('paid', 'partial_paid')
+                AND o.created_at >= %s
+                AND li.variant_id IS NOT NULL
+                AND o.deleted_at IS NULL
+                AND li.deleted_at IS NULL
+            GROUP BY v.product_id, li.variant_id, DATE(COALESCE(o.completed_on, o.confirmed_on, o.created_at)),
+                     p.name, vn.name, pt.name
+            ORDER BY v.product_id, date
+        """, (store_id, start_date))
+        
+        data = cur.fetchall()
+        df = pd.DataFrame(data)
+        
+        if len(df) == 0:
+            raise ValueError(f"No time series data found for store {store_id}")
+        
+        df['store_id'] = store_id
+        df['date'] = pd.to_datetime(df['date'])
+        
+        logger.info(f"  ✅ Extracted {len(df):,} daily records")
+        logger.info(f"  ✅ Products: {df['item_id'].nunique()}")
+        logger.info(f"  ✅ Date range: {df['date'].min()} to {df['date'].max()}")
+        
+        # Feature Engineering
+        logger.info(f"Step 2: Engineering time series features...")
+        
+        df = df.sort_values(['item_id', 'date'])
+        
+        # Temporal features
+        df['day_of_week'] = df['date'].dt.dayofweek
+        df['day_of_month'] = df['date'].dt.day
+        df['week_of_year'] = df['date'].dt.isocalendar().week
+        df['month'] = df['date'].dt.month
+        df['quarter'] = df['date'].dt.quarter
+        df['is_weekend'] = df['day_of_week'].isin([5, 6]).astype(int)
+        
+        # Lag features
+        for lag in [1, 3, 7, 14]:
+            df[f'sales_lag_{lag}'] = df.groupby('item_id')['daily_sales'].shift(lag)
+        
+        # Rolling statistics (Moving Averages)
+        for window in [3, 7, 14, 30]:
+            df[f'sales_rolling_mean_{window}'] = df.groupby('item_id')['daily_sales'].transform(
+                lambda x: x.rolling(window=window, min_periods=1).mean()
+            )
+        
+        # Rolling standard deviation (volatility)
+        for window in [7, 14]:
+            df[f'sales_rolling_std_{window}'] = df.groupby('item_id')['daily_sales'].transform(
+                lambda x: x.rolling(window=window, min_periods=1).std().fillna(0)
+            )
+        
+        # Sales velocity (growth rate)
+        df['sales_prev_7d'] = df.groupby('item_id')['daily_sales'].shift(7)
+        df['sales_velocity'] = (
+            (df['daily_sales'] - df['sales_prev_7d']) / 
+            (df['sales_prev_7d'] + 1)  # Avoid division by zero
+        )
+        
+        # Sales acceleration
+        df['velocity_prev'] = df.groupby('item_id')['sales_velocity'].shift(1)
+        df['sales_acceleration'] = df['sales_velocity'] - df['velocity_prev']
+        
+        # Exponentially weighted popularity
+        df['popularity_score'] = df.groupby('item_id')['daily_sales'].transform(
+            lambda x: x.ewm(alpha=0.1).mean()
+        )
+        
+        # Week-over-week growth
+        df['sales_prev_week'] = df.groupby('item_id')['daily_sales'].shift(7)
+        df['week_over_week_growth'] = (
+            (df['daily_sales'] - df['sales_prev_week']) / 
+            (df['sales_prev_week'] + 1)
+        )
+        
+        # Fill NaN values
+        df = df.fillna(0)
+        
+        logger.info(f"  ✅ Features engineered:")
+        logger.info(f"    - Temporal: day, week, month, quarter, weekend")
+        logger.info(f"    - Lag features: 1, 3, 7, 14 days")
+        logger.info(f"    - Moving averages: 3, 7, 14, 30 days")
+        logger.info(f"    - Velocity & acceleration metrics")
+        logger.info(f"    - Popularity score (exponentially weighted)")
+        
+        # Validate minimum data
+        if len(df) < 20:
+            raise ValueError(f"Insufficient time series data: need at least 20 records, got {len(df)}")
+        
+        return df
+        
+    finally:
+        cur.close()
+        conn.close()
+
+
+def update_store_ai_status(store_id, model_type, metrics):
+    """Update store AI status after successful training"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        if model_type == 'recommendation':
+            cur.execute("""
+                UPDATE store_ai_status 
+                SET recommendation_model_status = 'ready',
+                    recommendation_model_version = 'v1.0',
+                    recommendation_model_trained_at = NOW(),
+                    recommendation_model_metrics = %s,
+                    current_strategy = CASE 
+                        WHEN trending_model_status = 'ready' THEN 'full_ai'
+                        ELSE 'hybrid'
+                    END,
+                    updated_at = NOW()
+                WHERE store_id = %s
+            """, (json.dumps(metrics), store_id))
+        elif model_type == 'trending':
+            cur.execute("""
+                UPDATE store_ai_status 
+                SET trending_model_status = 'ready',
+                    trending_model_version = 'v1.0',
+                    trending_model_trained_at = NOW(),
+                    trending_model_metrics = %s,
+                    current_strategy = CASE 
+                        WHEN recommendation_model_status = 'ready' THEN 'full_ai'
+                        ELSE 'hybrid'
+                    END,
+                    updated_at = NOW()
+                WHERE store_id = %s
+            """, (json.dumps(metrics), store_id))
+        
+        conn.commit()
+        logger.info(f"Updated AI status for store {store_id}, model: {model_type}")
+    except Exception as e:
+        logger.error(f"Failed to update store AI status: {e}")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint"""
+    return jsonify({'status': 'healthy', 'service': 'ai-training-service'}), 200
+
+
+@app.route('/train/recommendation', methods=['POST'])
+def train_recommendation():
+    """Train recommendation model for a store using validated preprocessing pipeline"""
+    data = request.json
+    store_id = data.get('store_id')
+    
+    if not store_id:
+        return jsonify({'error': 'store_id required'}), 400
+    
+    logger.info(f"Starting recommendation training for store {store_id}")
+    logger.info(f"Using validated data preprocessing pipeline")
+    
+    try:
+        # Update training log to running
+        update_training_log(store_id, 'recommendation', 'running')
+        
+        start_time = time.time()
+        
+        # Step 1: Extract and preprocess interactions (with data cleaning)
+        logger.info(f"=" * 60)
+        logger.info(f"PREPROCESSING PIPELINE - Store {store_id}")
+        logger.info(f"=" * 60)
+        
+        interactions_df = extract_interactions(store_id)
+        
+        # Step 2: Prepare data for collaborative filtering
+        logger.info(f"\nStep 2: Preparing data for NeuMF model...")
+        
+        # Get unique users and items
+        all_users = interactions_df['user_id'].unique()
+        all_items = interactions_df['item_id'].unique()
+        
+        logger.info(f"  ✅ Users: {len(all_users):,}")
+        logger.info(f"  ✅ Items: {len(all_items):,}")
+        logger.info(f"  ✅ Sparsity: {(1 - len(interactions_df) / (len(all_users) * len(all_items))) * 100:.2f}%")
+        
+        # Aggregate interactions (sum weights for multiple interactions)
+        agg_interactions = interactions_df.groupby(['user_id', 'item_id']).agg({
+            'weight': 'sum',
+            'quantity': 'sum',
+            'price': 'mean'
+        }).reset_index()
+        
+        # Normalize weights to [0, 1]
+        agg_interactions['rating'] = agg_interactions['weight'] / agg_interactions['weight'].max()
+        
+        logger.info(f"  ✅ Aggregated to {len(agg_interactions):,} unique user-item pairs")
+        
+        # Step 3: Train/test split (temporal split for realistic evaluation)
+        logger.info(f"\nStep 3: Temporal train/test split...")
+        
+        # Sort by timestamp and split 80/20
+        interactions_with_time = interactions_df.merge(
+            agg_interactions[['user_id', 'item_id', 'rating']], 
+            on=['user_id', 'item_id']
+        )
+        interactions_with_time = interactions_with_time.sort_values('timestamp')
+        
+        split_idx = int(len(interactions_with_time) * 0.8)
+        train_data = interactions_with_time.iloc[:split_idx]
+        test_data = interactions_with_time.iloc[split_idx:]
+        
+        # Aggregate train and test
+        train_df = train_data.groupby(['user_id', 'item_id'])['rating'].max().reset_index()
+        test_df = test_data.groupby(['user_id', 'item_id'])['rating'].max().reset_index()
+        
+        logger.info(f"  ✅ Train: {len(train_df):,} interactions ({len(train_df)/len(agg_interactions)*100:.1f}%)")
+        logger.info(f"  ✅ Test: {len(test_df):,} interactions ({len(test_df)/len(agg_interactions)*100:.1f}%)")
+        
+        # Step 4: Create datasets
+        logger.info(f"\nStep 4: Creating PyTorch datasets...")
+        
+        train_dataset = InteractionDataset(train_df, all_users, all_items)
+        test_dataset = InteractionDataset(test_df, all_users, all_items)
+        
+        train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=256, shuffle=False)
+        
+        logger.info(f"  ✅ Train loader: {len(train_loader)} batches")
+        logger.info(f"  ✅ Test loader: {len(test_loader)} batches")
+        
+        # Step 5: Initialize and train model
+        logger.info(f"\nStep 5: Training NeuMF model...")
+        logger.info(f"  Architecture:")
+        logger.info(f"    - Embedding dimension: 32")
+        logger.info(f"    - MLP layers: [64, 32, 16]")
+        logger.info(f"    - Optimizer: Adam (lr=0.001)")
+        logger.info(f"    - Loss: MSE")
+        logger.info(f"    - Epochs: 20")
+        
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        logger.info(f"  ✅ Device: {device}")
+        
+        model = NeuMF(
+            n_users=len(all_users),
+            n_items=len(all_items),
+            embed_dim=32,
+            hidden_layers=[64, 32, 16]
+        ).to(device)
+        
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        criterion = torch.nn.MSELoss()
+        
+        best_loss = float('inf')
+        epochs = 20
+        
+        logger.info(f"\n  Training progress:")
+        for epoch in range(epochs):
+            # Train
+            model.train()
+            train_loss = 0
+            for users, items, ratings in train_loader:
+                users, items, ratings = users.to(device), items.to(device), ratings.to(device)
+                
+                optimizer.zero_grad()
+                predictions = model(users, items).squeeze()
+                loss = criterion(predictions, ratings)
+                loss.backward()
+                optimizer.step()
+                
+                train_loss += loss.item()
+            
+            train_loss /= len(train_loader)
+            
+            # Evaluate
+            model.eval()
+            test_loss = 0
+            with torch.no_grad():
+                for users, items, ratings in test_loader:
+                    users, items, ratings = users.to(device), items.to(device), ratings.to(device)
+                    predictions = model(users, items).squeeze()
+                    loss = criterion(predictions, ratings)
+                    test_loss += loss.item()
+            
+            test_loss /= len(test_loader)
+            
+            if test_loss < best_loss:
+                best_loss = test_loss
+            
+            if (epoch + 1) % 5 == 0:
+                logger.info(f"    Epoch {epoch+1}/{epochs}: Train Loss={train_loss:.4f}, Test Loss={test_loss:.4f}")
+        
+        training_time = time.time() - start_time
+        
+        logger.info(f"\n  ✅ Training completed in {training_time:.2f}s")
+        logger.info(f"  ✅ Best test loss: {best_loss:.4f}")
+        
+        # Step 6: Calculate metrics
+        metrics = {
+            'final_train_loss': float(train_loss),
+            'final_test_loss': float(test_loss),
+            'best_test_loss': float(best_loss),
+            'training_time': int(training_time),
+            'num_users': int(len(all_users)),
+            'num_items': int(len(all_items)),
+            'num_interactions': int(len(interactions_df)),
+            'num_order_interactions': int(len(interactions_df[interactions_df['action_type'] == 'order'])),
+            'num_cart_interactions': int(len(interactions_df[interactions_df['action_type'] == 'cart'])),
+            'sparsity': float((1 - len(interactions_df) / (len(all_users) * len(all_items))) * 100),
+            'epochs': epochs,
+            'preprocessing_pipeline': 'validated'
+        }
+        
+        # Step 7: Save model
+        logger.info(f"\nStep 6: Saving model...")
+        
+        model_dir = MODELS_DIR / f'store_{store_id}' / 'recommendation'
+        model_dir.mkdir(parents=True, exist_ok=True)
+        model_path = model_dir / 'neumf_model.pth'
+        
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'user_to_idx': train_dataset.user_to_idx,
+            'item_to_idx': train_dataset.item_to_idx,
+            'n_users': len(all_users),
+            'n_items': len(all_items),
+            'metrics': metrics,
+            'preprocessing_version': 'v2.0_validated'
+        }, model_path)
+        
+        logger.info(f"  ✅ Model saved to {model_path}")
+        
+        # Step 8: Pre-compute recommendations cache
+        logger.info(f"\nStep 7: Pre-computing recommendation cache...")
+        logger.info(f"  Generating recommendations for {len(all_users):,} users...")
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        try:
+            model.eval()
+            cached_count = 0
+            
+            with torch.no_grad():
+                for user_id in all_users:
+                    user_id = int(user_id)
+                    
+                    if user_id not in train_dataset.user_to_idx:
+                        continue
+                    
+                    user_idx = train_dataset.user_to_idx[user_id]
+                    
+                    # Generate predictions for all items
+                    predictions = []
+                    for item_id, item_idx in train_dataset.item_to_idx.items():
+                        user_tensor = torch.tensor([user_idx], dtype=torch.long).to(device)
+                        item_tensor = torch.tensor([item_idx], dtype=torch.long).to(device)
+                        score = model(user_tensor, item_tensor).cpu().item()
+                        predictions.append({
+                            'item_id': int(item_id),
+                            'variant_id': int(item_id),
+                            'score': float(score),
+                        })
+                    
+                    # Sort by score and take top 100
+                    predictions = sorted(predictions, key=lambda x: x['score'], reverse=True)[:100]
+                    for i, pred in enumerate(predictions):
+                        pred['rank'] = i + 1
+                    
+                    # Save to cache
+                    cur.execute("""
+                        INSERT INTO recommendation_cache 
+                        (store_id, user_id, recommendations, model_version, 
+                         strategy, created_at, expires_at)
+                        VALUES (%s, %s, %s, %s, %s, NOW(), NOW() + INTERVAL '7 days')
+                        ON CONFLICT (store_id, user_id, model_version) 
+                        DO UPDATE SET 
+                            recommendations = EXCLUDED.recommendations,
+                            strategy = EXCLUDED.strategy,
+                            created_at = EXCLUDED.created_at,
+                            expires_at = EXCLUDED.expires_at
+                    """, (int(store_id), int(user_id), json.dumps(predictions), 'v1.0', 'ai_model'))
+                    
+                    cached_count += 1
+            
+            conn.commit()
+            logger.info(f"  ✅ Cached recommendations for {cached_count:,} users")
+        except Exception as cache_err:
+            logger.error(f"  ❌ Failed to cache recommendations: {cache_err}")
+            conn.rollback()
+        finally:
+            cur.close()
+            conn.close()
+        
+        # Step 9: Update database
+        update_store_ai_status(store_id, 'recommendation', metrics)
+        update_training_log(store_id, 'recommendation', 'success', metrics)
+        
+        logger.info(f"\n" + "=" * 60)
+        logger.info(f"TRAINING COMPLETED SUCCESSFULLY")
+        logger.info(f"=" * 60)
+        
+        return jsonify({
+            'success': True,
+            'store_id': store_id,
+            'model_type': 'recommendation',
+            'metrics': metrics,
+            'model_path': str(model_path),
+            'preprocessing': 'validated_pipeline_v2.0'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Training failed for store {store_id}: {str(e)}")
+        logger.error(traceback.format_exc())
+        update_training_log(store_id, 'recommendation', 'failed', error=str(e))
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
+@app.route('/train/trending', methods=['POST'])
+def train_trending():
+    """Train trending prediction model for a store using validated preprocessing pipeline"""
+    data = request.json
+    store_id = data.get('store_id')
+    
+    if not store_id:
+        return jsonify({'error': 'store_id required'}), 400
+    
+    logger.info(f"Starting trending training for store {store_id}")
+    logger.info(f"Using validated feature engineering pipeline")
+    
+    try:
+        # Update training log to running
+        update_training_log(store_id, 'trending', 'running')
+        
+        start_time = time.time()
+        
+        # Step 1: Extract and engineer time series features
+        logger.info(f"=" * 60)
+        logger.info(f"FEATURE ENGINEERING PIPELINE - Store {store_id}")
+        logger.info(f"=" * 60)
+        
+        time_series_df = extract_time_series_data(store_id, days_back=180)
+        
+        # Step 2: Prepare features for LightGBM
+        logger.info(f"\nStep 3: Preparing features for LightGBM...")
+        
+        # Select feature columns (based on validated pipeline)
+        feature_cols = [
+            # Temporal features
+            'day_of_week', 'day_of_month', 'week_of_year', 'month', 'quarter', 'is_weekend',
+            # Lag features
+            'sales_lag_1', 'sales_lag_3', 'sales_lag_7', 'sales_lag_14',
+            # Rolling statistics
+            'sales_rolling_mean_3', 'sales_rolling_mean_7', 'sales_rolling_mean_14', 'sales_rolling_mean_30',
+            'sales_rolling_std_7', 'sales_rolling_std_14',
+            # Velocity and acceleration
+            'sales_velocity', 'sales_acceleration', 'week_over_week_growth',
+            # Other metrics
+            'popularity_score', 'order_count', 'avg_price'
+        ]
+        
+        # Ensure all feature columns exist
+        missing_cols = [col for col in feature_cols if col not in time_series_df.columns]
+        if missing_cols:
+            logger.warning(f"  ⚠️  Missing columns: {missing_cols}")
+            feature_cols = [col for col in feature_cols if col in time_series_df.columns]
+        
+        logger.info(f"  ✅ Selected {len(feature_cols)} features:")
+        for i, col in enumerate(feature_cols, 1):
+            logger.info(f"    {i}. {col}")
+        
+        # Prepare X and y
+        X = time_series_df[feature_cols].values
+        y = time_series_df['daily_sales'].values
+        
+        logger.info(f"\n  Dataset shape:")
+        logger.info(f"    X: {X.shape}")
+        logger.info(f"    y: {y.shape}")
+        
+        # Step 3: Train/test split (temporal split)
+        logger.info(f"\nStep 4: Temporal train/test split (80/20)...")
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, shuffle=False
+        )
+        
+        logger.info(f"  ✅ Train: {X_train.shape[0]:,} samples")
+        logger.info(f"  ✅ Test: {X_test.shape[0]:,} samples")
+        
+        # Step 4: Train LightGBM model
+        logger.info(f"\nStep 5: Training LightGBM model...")
+        logger.info(f"  Configuration:")
+        logger.info(f"    - Objective: regression")
+        logger.info(f"    - Metric: MAE, RMSE")
+        logger.info(f"    - Boosting: GBDT")
+        logger.info(f"    - Max depth: 6")
+        logger.info(f"    - Learning rate: 0.05")
+        logger.info(f"    - Early stopping: 50 rounds")
+        
+        train_data = lgb.Dataset(X_train, label=y_train)
+        test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
+        
+        params = {
+            'objective': 'regression',
+            'metric': ['mae', 'rmse'],
+            'boosting_type': 'gbdt',
+            'num_leaves': 31,
+            'max_depth': 6,
+            'learning_rate': 0.05,
+            'feature_fraction': 0.9,
+            'bagging_fraction': 0.8,
+            'bagging_freq': 5,
+            'verbose': -1
+        }
+        
+        model = lgb.train(
+            params,
+            train_data,
+            num_boost_round=1000,
+            valid_sets=[test_data],
+            callbacks=[lgb.early_stopping(stopping_rounds=50), lgb.log_evaluation(period=100)]
+        )
+        
+        logger.info(f"\n  ✅ Training completed")
+        logger.info(f"  ✅ Best iteration: {model.best_iteration}")
+        
+        # Step 5: Evaluate
+        logger.info(f"\nStep 6: Evaluating model...")
+        
+        y_pred = model.predict(X_test, num_iteration=model.best_iteration)
+        
+        mae = np.mean(np.abs(y_test - y_pred))
+        rmse = np.sqrt(np.mean((y_test - y_pred) ** 2))
+        mape = np.mean(np.abs((y_test - y_pred) / (y_test + 1e-10))) * 100
+        
+        # Top-20 accuracy (trending identification)
+        test_df_with_pred = time_series_df.iloc[-len(y_test):].copy()
+        test_df_with_pred['predicted_sales'] = y_pred
+        
+        # Get latest prediction for each item
+        latest_predictions = test_df_with_pred.groupby('item_id').last().reset_index()
+        top_20_actual = set(latest_predictions.nlargest(20, 'daily_sales')['item_id'])
+        top_20_predicted = set(latest_predictions.nlargest(20, 'predicted_sales')['item_id'])
+        top_20_accuracy = len(top_20_actual & top_20_predicted) / 20
+        
+        training_time = time.time() - start_time
+        
+        logger.info(f"  Metrics:")
+        logger.info(f"    MAE: {mae:.4f}")
+        logger.info(f"    RMSE: {rmse:.4f}")
+        logger.info(f"    MAPE: {mape:.2f}%")
+        logger.info(f"    Top-20 Accuracy: {top_20_accuracy:.2f}")
+        
+        metrics = {
+            'mae': float(mae),
+            'rmse': float(rmse),
+            'mape': float(mape),
+            'top_20_accuracy': float(top_20_accuracy),
+            'training_time': int(training_time),
+            'num_products': int(time_series_df['item_id'].nunique()),
+            'num_days': int((time_series_df['date'].max() - time_series_df['date'].min()).days),
+            'num_records': int(len(time_series_df)),
+            'best_iteration': int(model.best_iteration),
+            'num_features': len(feature_cols),
+            'preprocessing_pipeline': 'validated'
+        }
+        
+        # Feature importance
+        feature_importance = dict(zip(feature_cols, model.feature_importance().tolist()))
+        top_5_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        logger.info(f"\n  Top 5 Important Features:")
+        for i, (feat, imp) in enumerate(top_5_features, 1):
+            logger.info(f"    {i}. {feat}: {imp:,.0f}")
+        
+        metrics['top_features'] = dict(top_5_features)
+        
+        # Step 6: Save model
+        logger.info(f"\nStep 7: Saving model...")
+        
+        model_dir = MODELS_DIR / f'store_{store_id}' / 'trending'
+        model_dir.mkdir(parents=True, exist_ok=True)
+        model_path = model_dir / 'lightgbm_model.txt'
+        
+        model.save_model(str(model_path))
+        
+        # Save metadata
+        metadata_path = model_dir / 'metadata.pkl'
+        with open(metadata_path, 'wb') as f:
+            pickle.dump({
+                'feature_cols': feature_cols,
+                'metrics': metrics,
+                'preprocessing_version': 'v2.0_validated'
+            }, f)
+        
+        logger.info(f"  ✅ Model saved to {model_path}")
+        logger.info(f"  ✅ Metadata saved to {metadata_path}")
+        
+        # Step 7: Pre-compute trending cache
+        logger.info(f"\nStep 8: Pre-computing trending cache...")
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        try:
+            # Get latest data for each item
+            latest_data = time_series_df.groupby('item_id').last().reset_index()
+            
+            if len(latest_data) > 0:
+                X_latest = latest_data[feature_cols].values
+                predicted_sales = model.predict(X_latest, num_iteration=model.best_iteration)
+                
+                # Create predictions list
+                predictions = []
+                for idx, row in latest_data.iterrows():
+                    growth_rate = 0
+                    if 'sales_rolling_mean_7' in row and row['sales_rolling_mean_7'] > 0:
+                        growth_rate = ((predicted_sales[idx] - row['sales_rolling_mean_7']) / row['sales_rolling_mean_7']) * 100
+                    
+                    trend_score = predicted_sales[idx] / (row.get('sales_rolling_mean_7', 1) + 1e-10)
+                    
+                    predictions.append({
+                        'item_id': int(row['item_id']),
+                        'variant_id': int(row['variant_id']) if 'variant_id' in row else int(row['item_id']),
+                        'product_name': str(row.get('product_name', '')),
+                        'predicted_sales': float(predicted_sales[idx]),
+                        'trend_score': float(trend_score),
+                        'growth_rate': float(growth_rate)
+                    })
+                
+                # Sort by predicted sales
+                predictions = sorted(predictions, key=lambda x: x['predicted_sales'], reverse=True)
+                for i, pred in enumerate(predictions):
+                    pred['rank'] = i + 1
+                
+                # Save to cache
+                today = datetime.now().date()
+                cur.execute("""
+                    INSERT INTO trending_cache 
+                    (store_id, prediction_date, trending_products, model_version, created_at)
+                    VALUES (%s, %s, %s, %s, NOW())
+                    ON CONFLICT (store_id, prediction_date, model_version)
+                    DO UPDATE SET 
+                        trending_products = EXCLUDED.trending_products,
+                        created_at = EXCLUDED.created_at
+                """, (int(store_id), today, json.dumps(predictions), 'v1.0'))
+                
+                conn.commit()
+                logger.info(f"  ✅ Cached trending for {len(predictions):,} products")
+            else:
+                logger.warning("  ⚠️  No data available for trending cache")
+        except Exception as cache_err:
+            logger.error(f"  ❌ Failed to cache trending: {cache_err}")
+            conn.rollback()
+        finally:
+            cur.close()
+            conn.close()
+        
+        # Step 8: Update database
+        update_store_ai_status(store_id, 'trending', metrics)
+        update_training_log(store_id, 'trending', 'success', metrics)
+        
+        logger.info(f"\n" + "=" * 60)
+        logger.info(f"TRAINING COMPLETED SUCCESSFULLY")
+        logger.info(f"=" * 60)
+        
+        return jsonify({
+            'success': True,
+            'store_id': store_id,
+            'model_type': 'trending',
+            'metrics': metrics,
+            'model_path': str(model_path),
+            'preprocessing': 'validated_pipeline_v2.0'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Training failed for store {store_id}: {str(e)}")
+        logger.error(traceback.format_exc())
+        update_training_log(store_id, 'trending', 'failed', error=str(e))
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
+@app.route('/predict/recommendations', methods=['POST'])
+def predict_recommendations():
+    """Generate recommendations for a user (inference endpoint)"""
+    data = request.json
+    store_id = data.get('store_id')
+    user_id = data.get('user_id')
+    n = data.get('n', 10)
+    
+    if not store_id or not user_id:
+        return jsonify({'error': 'store_id and user_id required'}), 400
+    
+    try:
+        # Load trained model
+        model_path = MODELS_DIR / f'store_{store_id}' / 'recommendation' / 'neumf_model.pth'
+        
+        if not model_path.exists():
+            return jsonify({'error': f'Model not found for store {store_id}. Please train first.'}), 404
+        
+        checkpoint = torch.load(model_path, map_location='cpu')
+        
+        # Reconstruct model
+        device = torch.device('cpu')
+        model = NeuMF(
+            n_users=checkpoint['n_users'],
+            n_items=checkpoint['n_items'],
+            embed_dim=32,
+            hidden_layers=[64, 32, 16]
+        ).to(device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        model.eval()
+        
+        # Get user index
+        user_to_idx = checkpoint['user_to_idx']
+        item_to_idx = checkpoint['item_to_idx']
+        
+        if user_id not in user_to_idx:
+            return jsonify({'error': f'User {user_id} not in training data'}), 404
+        
+        user_idx = user_to_idx[user_id]
+        
+        # Generate predictions for all items
+        predictions = []
+        with torch.no_grad():
+            for item_id, item_idx in item_to_idx.items():
+                user_tensor = torch.tensor([user_idx], dtype=torch.long)
+                item_tensor = torch.tensor([item_idx], dtype=torch.long)
+                score = model(user_tensor, item_tensor).item()
+                predictions.append({
+                    'item_id': int(item_id),
+                    'variant_id': int(item_id),
+                    'score': float(score),
+                })
+        
+        # Sort by score and take top N
+        predictions = sorted(predictions, key=lambda x: x['score'], reverse=True)[:n]
+        for i, pred in enumerate(predictions):
+            pred['rank'] = i + 1
+        
+        return jsonify({
+            'store_id': store_id,
+            'user_id': user_id,
+            'recommendations': predictions
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Prediction failed: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/predict/trending', methods=['POST'])
+def predict_trending():
+    """Generate trending predictions (inference endpoint)"""
+    data = request.json
+    store_id = data.get('store_id')
+    n = data.get('n', 20)
+    
+    if not store_id:
+        return jsonify({'error': 'store_id required'}), 400
+    
+    try:
+        # Load trained model
+        model_path = MODELS_DIR / f'store_{store_id}' / 'trending' / 'lightgbm_model.txt'
+        metadata_path = MODELS_DIR / f'store_{store_id}' / 'trending' / 'metadata.pkl'
+        
+        if not model_path.exists():
+            return jsonify({'error': f'Model not found for store {store_id}. Please train first.'}), 404
+        
+        model = lgb.Booster(model_file=str(model_path))
+        
+        with open(metadata_path, 'rb') as f:
+            metadata = pickle.load(f)
+        
+        # Extract recent data for each item
+        time_series_df = extract_time_series_data(store_id, days_back=30)
+        
+        # Feature engineering (same as training)
+        time_series_df['date'] = pd.to_datetime(time_series_df['date'])
+        time_series_df = time_series_df.sort_values(['item_id', 'date'])
+        
+        time_series_df['day_of_week'] = time_series_df['date'].dt.dayofweek
+        time_series_df['day_of_month'] = time_series_df['date'].dt.day
+        time_series_df['week_of_year'] = time_series_df['date'].dt.isocalendar().week
+        time_series_df['month'] = time_series_df['date'].dt.month
+        
+        for lag in [1, 3]:
+            time_series_df[f'lag_{lag}'] = time_series_df.groupby('item_id')['daily_sales'].shift(lag).fillna(0)
+        
+        time_series_df['rolling_mean_3'] = time_series_df.groupby('item_id')['daily_sales'].transform(
+            lambda x: x.rolling(window=3, min_periods=1).mean()
+        )
+        time_series_df['rolling_std_3'] = time_series_df.groupby('item_id')['daily_sales'].transform(
+            lambda x: x.rolling(window=3, min_periods=1).std().fillna(0)
+        )
+        
+        # Get latest record for each item
+        latest_data = time_series_df.groupby('item_id').last().reset_index()
+        latest_data = latest_data.dropna()
+        
+        # Predict
+        feature_cols = metadata['feature_cols']
+        X = latest_data[feature_cols].values
+        predicted_sales = model.predict(X)
+        
+        # Create predictions list
+        predictions = []
+        for idx, row in latest_data.iterrows():
+            predictions.append({
+                'item_id': int(row['item_id']),
+                'variant_id': int(row['item_id']),
+                'predicted_sales': float(predicted_sales[idx]),
+                'trend_score': float(predicted_sales[idx] / (row['rolling_mean_7'] + 1e-10))
+            })
+        
+        # Sort by predicted sales and take top N
+        predictions = sorted(predictions, key=lambda x: x['predicted_sales'], reverse=True)[:n]
+        for i, pred in enumerate(predictions):
+            pred['rank'] = i + 1
+        
+        return jsonify({
+            'store_id': store_id,
+            'trending': predictions
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Trending prediction failed: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    logger.info("Starting AI Training Service on port 5001")
+    logger.info(f"Models directory: {MODELS_DIR}")
+    app.run(host='0.0.0.0', port=5001, debug=False)
