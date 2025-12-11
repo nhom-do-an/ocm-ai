@@ -16,6 +16,8 @@ import numpy as np
 from datetime import datetime, timedelta
 from collections import defaultdict
 import json
+import hashlib
+import traceback
 
 # Database config
 DB_CONFIG = {
@@ -379,21 +381,37 @@ def generate_realistic_orders(conn, store_id, num_orders_per_user_avg=8, days_ba
                 order_number = start_order_num + orders_created
                 name = f"#{order_number}"
                 
-                # Create order
+                # Generate tokens
+                checkout_token = hashlib.md5(f"{store_id}{customer_id}{order_number}{random.random()}".encode()).hexdigest()
+                cart_token = hashlib.md5(f"{store_id}{customer_id}{order_number}{random.random()}cart".encode()).hexdigest()
+                
+                # Create order with ALL required fields
                 cur.execute("""
                     INSERT INTO orders (
                         customer_id, store_id, location_id, order_number, name,
-                        status, fulfillment_status, financial_status,
-                        created_at, updated_at, processed_on, confirmed_on, completed_on
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        status, fulfillment_status, financial_status, return_status,
+                        checkout_token, cart_token, cancel_reason, note,
+                        assignee_id, created_user_id, source_id, channel_id, edited,
+                        created_at, updated_at, processed_on, confirmed_on, completed_on,
+                        canceled_on, closed_on, expected_delivery_date, deleted_at,
+                        billing_address_id, shipping_address_id
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
                     RETURNING id
                 """, (
                     customer_id, store_id, location_id, order_number, name,
-                    status, fulfillment_status, financial_status,
-                    order_date, order_date,
-                    order_date if status != 'pending' else None,
-                    order_date if status in ['completed', 'processing'] else None,
-                    order_date if status == 'completed' else None
+                    status, fulfillment_status, financial_status, 'no_return',  # return_status
+                    checkout_token, cart_token, '', '',  # tokens, cancel_reason, note
+                    0, 0, 1, 1, False,  # assignee_id, created_user_id, source_id, channel_id, edited
+                    order_date, order_date,  # created_at, updated_at
+                    order_date if status != 'pending' else None,  # processed_on
+                    order_date if status in ['completed', 'processing'] else None,  # confirmed_on
+                    order_date if status == 'completed' else None,  # completed_on
+                    order_date if status == 'cancelled' else None,  # canceled_on
+                    None, None, None,  # closed_on, expected_delivery_date, deleted_at
+                    None, None  # billing_address_id, shipping_address_id (optional)
                 ))
                 
                 order_id = cur.fetchone()[0]
@@ -429,12 +447,12 @@ def generate_realistic_orders(conn, store_id, num_orders_per_user_avg=8, days_ba
                     cur.execute("""
                         INSERT INTO line_items (
                             variant_id, reference_id, reference_type, quantity,
-                            price, product_name, variant_title, requires_shipping, grams
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            price, product_name, variant_title, requires_shipping, grams, note
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         variant['id'], order_id, 'order', quantity,
-                        price, variant['product_name'], variant.get('variant_title', ''),
-                        True, random.randint(100, 2000)
+                        price, variant['product_name'], variant.get('variant_title', 'Default Title'),
+                        True, random.randint(100, 2000), ''
                     ))
                     
                     line_items_created += 1
@@ -443,15 +461,15 @@ def generate_realistic_orders(conn, store_id, num_orders_per_user_avg=8, days_ba
             # User-defined ratio of users with active carts
             if random.random() < cart_ratio:
                 cart_date = end_date - timedelta(days=random.randint(0, 7))  # Recent carts
+                cart_token = hashlib.md5(f"{store_id}{customer_id}cart{random.random()}{cart_date}".encode()).hexdigest()
                 
                 cur.execute("""
                     INSERT INTO carts (
-                        token, customer_id, status, store_id, created_at, updated_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                        token, customer_id, status, store_id, created_at, updated_at, deleted_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
-                    f"cart_{customer_id}_{random.randint(1000, 9999)}",
-                    customer_id, 'active', store_id, cart_date, cart_date
+                    cart_token, customer_id, 'active', store_id, cart_date, cart_date, None
                 ))
                 
                 cart_id = cur.fetchone()[0]
@@ -470,12 +488,12 @@ def generate_realistic_orders(conn, store_id, num_orders_per_user_avg=8, days_ba
                     cur.execute("""
                         INSERT INTO line_items (
                             variant_id, reference_id, reference_type, quantity,
-                            price, product_name, variant_title, requires_shipping, grams
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            price, product_name, variant_title, requires_shipping, grams, note
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         variant['id'], cart_id, 'cart', quantity,
-                        price, variant['product_name'], variant.get('variant_title', ''),
-                        True, random.randint(100, 2000)
+                        price, variant['product_name'], variant.get('variant_title', 'Default Title'),
+                        True, random.randint(100, 2000), ''
                     ))
                     
                     line_items_created += 1
