@@ -108,11 +108,14 @@ def extract_interactions(store_id):
         logger.info(f"  ✅ Unique items: {df['item_id'].nunique()}")
         
         # Validate minimum requirements
-        if df['user_id'].nunique() < config.MIN_USERS_REQUIRED:
-            raise ValueError(f"Insufficient users: need at least {config.MIN_USERS_REQUIRED}, got {df['user_id'].nunique()}")
+        unique_users = df['user_id'].nunique()
+        unique_items = df['item_id'].nunique()
         
-        if df['item_id'].nunique() < config.MIN_ITEMS_REQUIRED:
-            raise ValueError(f"Insufficient items: need at least {config.MIN_ITEMS_REQUIRED}, got {df['item_id'].nunique()}")
+        if unique_users < config.MIN_USERS_REQUIRED:
+            raise ValueError(f"Insufficient users: need at least {config.MIN_USERS_REQUIRED}, got {unique_users}")
+        
+        if unique_items < config.MIN_ITEMS_REQUIRED:
+            raise ValueError(f"Insufficient items: need at least {config.MIN_ITEMS_REQUIRED}, got {unique_items}")
         
         return df
         

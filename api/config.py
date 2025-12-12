@@ -48,8 +48,8 @@ class Config:
     REC_LEARNING_RATE = float(os.getenv('RECOMMENDATION_LEARNING_RATE', 0.001))
     REC_EMBED_DIM = int(os.getenv('RECOMMENDATION_EMBED_DIM', 32))
     REC_HIDDEN_LAYERS = [int(x) for x in os.getenv('RECOMMENDATION_HIDDEN_LAYERS', '64,32,16').split(',')]
-
-        # Interaction Weights
+    
+    # Interaction Weights
     WEIGHT_ORDER = float(os.getenv('WEIGHT_ORDER', 1.0))
     WEIGHT_CART = float(os.getenv('WEIGHT_CART', 0.3))
     
@@ -67,8 +67,11 @@ class Config:
     
     # Data
     TIME_SERIES_DAYS_BACK = int(os.getenv('TIME_SERIES_DAYS_BACK', 180))
-    MIN_USERS_REQUIRED = int(os.getenv('MIN_USERS_REQUIRED', 10))
-    MIN_ITEMS_REQUIRED = int(os.getenv('MIN_ITEMS_REQUIRED', 5))
+    
+    MIN_ORDERS_REQUIRED = int(os.getenv('MIN_ORDERS_REQUIRED', 100))
+    MIN_USERS_REQUIRED = int(os.getenv('MIN_USERS_REQUIRED', 20))
+    MIN_ITEMS_REQUIRED = int(os.getenv('MIN_ITEMS_REQUIRED', 10))
+    MIN_DAYS_REQUIRED = int(os.getenv('MIN_DAYS_REQUIRED', 30))
     MIN_TIME_SERIES_RECORDS = int(os.getenv('MIN_TIME_SERIES_RECORDS', 20))
 
 # Global config instance
