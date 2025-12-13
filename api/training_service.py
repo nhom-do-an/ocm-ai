@@ -397,7 +397,8 @@ def predict_next_items():
         if not item_history:
             return jsonify({'predictions': []}), 200
         
-        last_item = item_history[-1]
+        # History is ordered DESC (newest first), so first item is the most recent
+        last_item = item_history[0]
         
         if last_item not in transition_probs:
             return jsonify({'predictions': []}), 200
