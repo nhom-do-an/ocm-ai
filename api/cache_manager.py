@@ -101,7 +101,7 @@ def cache_recommendations(store_id, model, train_dataset, all_users, device):
         conn.close()
 
 
-def cache_trending(store_id, model, time_series_df, feature_cols):
+def cache_trending(store_id, model, time_series_df, feature_cols, use_existing_version=False):
     """Pre-compute and cache trending predictions"""
     logger.info(f"\nCaching trending predictions for store {store_id}...")
     
@@ -109,25 +109,50 @@ def cache_trending(store_id, model, time_series_df, feature_cols):
     cur = conn.cursor()
     
     try:
-        # Get next version number
-        cur.execute("""
-            SELECT COALESCE(MAX(CAST(SUBSTRING(model_version FROM 2) AS INTEGER)), 0) + 1
-            FROM trending_cache
-            WHERE store_id = %s AND model_version ~ '^v[0-9]+$'
-        """, (store_id,))
-        next_version_num = cur.fetchone()[0]
-        model_version = f'v{next_version_num}'
-        logger.info(f"  📌 Model version: {model_version}")
+        if use_existing_version:
+            # Use existing model version (for daily cache updates without retraining)
+            cur.execute("""
+                SELECT model_version
+                FROM trending_cache
+                WHERE store_id = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (store_id,))
+            result = cur.fetchone()
+            if result:
+                model_version = result[0]
+                logger.info(f"  📌 Using existing model version: {model_version}")
+            else:
+                # Fallback: get next version if no cache exists
+                cur.execute("""
+                    SELECT COALESCE(MAX(CAST(SUBSTRING(model_version FROM 2) AS INTEGER)), 0) + 1
+                    FROM trending_cache
+                    WHERE store_id = %s AND model_version ~ '^v[0-9]+$'
+                """, (store_id,))
+                next_version_num = cur.fetchone()[0]
+                model_version = f'v{next_version_num}'
+                logger.info(f"  📌 New model version: {model_version}")
+        else:
+            # Get next version number (for new model training)
+            cur.execute("""
+                SELECT COALESCE(MAX(CAST(SUBSTRING(model_version FROM 2) AS INTEGER)), 0) + 1
+                FROM trending_cache
+                WHERE store_id = %s AND model_version ~ '^v[0-9]+$'
+            """, (store_id,))
+            next_version_num = cur.fetchone()[0]
+            model_version = f'v{next_version_num}'
+            logger.info(f"  📌 New model version: {model_version}")
         
-        # Clear old cache before inserting new predictions
-        logger.info(f"  🗑️  Clearing old trending cache...")
+        # Only clear cache for today's date (not all cache)
+        today = datetime.now().date()
+        logger.info(f"  🗑️  Clearing today's trending cache (date: {today})...")
         cur.execute("""
             DELETE FROM trending_cache 
-            WHERE store_id = %s
-        """, (store_id,))
+            WHERE store_id = %s AND prediction_date = %s
+        """, (store_id, today))
         deleted_count = cur.rowcount
         conn.commit()
-        logger.info(f"  ✅ Deleted {deleted_count:,} old cache entries")
+        logger.info(f"  ✅ Deleted {deleted_count:,} cache entries for today")
         
         # Get latest data for each item
         latest_data = time_series_df.groupby('item_id').last().reset_index()

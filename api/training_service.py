@@ -370,6 +370,59 @@ def train_next_item():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/update/trending-cache', methods=['POST'])
+def update_trending_cache():
+    """Update trending cache daily without retraining the model"""
+    data = request.json
+    store_id = data.get('store_id')
+    
+    if not store_id:
+        return jsonify({'error': 'store_id required'}), 400
+    
+    try:
+        import lightgbm as lgb
+        from data_extraction import extract_time_series_data
+        from cache_manager import cache_trending
+        
+        # Load existing trained model
+        model_path = config.MODEL_SAVE_DIR / f'store_{store_id}' / 'trending' / 'lightgbm_model.txt'
+        metadata_path = config.MODEL_SAVE_DIR / f'store_{store_id}' / 'trending' / 'metadata.pkl'
+        
+        if not model_path.exists():
+            return jsonify({'error': f'Model not found for store {store_id}. Please train first.'}), 404
+        
+        model = lgb.Booster(model_file=str(model_path))
+        
+        with open(metadata_path, 'rb') as f:
+            metadata = pickle.load(f)
+        
+        # Extract latest time series data
+        time_series_df = extract_time_series_data(store_id, days_back=30)
+        
+        # Update cache using existing model (use_existing_version=True)
+        cached_count, model_version = cache_trending(
+            store_id,
+            model,
+            time_series_df,
+            metadata['feature_cols'],
+            use_existing_version=True
+        )
+        
+        logger.info(f"Updated trending cache for store {store_id}: {cached_count} products")
+        
+        return jsonify({
+            'success': True,
+            'store_id': store_id,
+            'cached_products': cached_count,
+            'model_version': model_version
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to update trending cache: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/predict/next-items', methods=['POST'])
 def predict_next_items():
     """Predict next items for a customer based on purchase history"""
