@@ -83,93 +83,173 @@ class NextItemTrainer:
             conn.close()
     
     def build_item_sequences(self, df):
-        """Build item sequences for each customer"""
-        logger.info(f"\nStep 2: Building item sequences...")
+        """Build item sequences for each customer (grouped by order)"""
+        logger.info(f"\nStep 2: Building item sequences (grouped by order)...")
         
         sequences = []
-        sequence_df = df.groupby('customer_id').apply(
-            lambda x: x.sort_values('created_at')[['item_id', 'product_name', 'product_type', 'created_at']].values.tolist()
-        ).reset_index()
-        sequence_df.columns = ['customer_id', 'sequence']
         
-        # Extract just item IDs for pattern mining
-        for idx, row in sequence_df.iterrows():
-            customer_id = row['customer_id']
-            full_sequence = row['sequence']
-            item_sequence = [item[0] for item in full_sequence]  # item_id
+        # Group by customer first
+        for customer_id, customer_data in df.groupby('customer_id'):
+            # Group by order_id to handle multiple items in same order
+            order_groups = []
+            
+            for order_id, order_data in customer_data.groupby('order_id'):
+                # Get all items in this order (sorted by variant_id for consistency)
+                items_in_order = sorted(order_data['item_id'].unique().tolist())
+                order_groups.append({
+                    'order_id': order_id,
+                    'created_at': order_data['created_at'].iloc[0],
+                    'items': items_in_order
+                })
+            
+            # Sort orders by created_at
+            order_groups.sort(key=lambda x: x['created_at'])
+            
+            # Build sequence: flatten items but keep track of order boundaries
+            item_sequence = []
+            for order_group in order_groups:
+                item_sequence.extend(order_group['items'])
             
             if len(item_sequence) >= 2:  # Need at least 2 items for pattern
                 sequences.append({
                     'customer_id': customer_id,
                     'items': item_sequence,
+                    'order_groups': order_groups,  # Keep for pattern mining
                     'length': len(item_sequence)
                 })
         
         logger.info(f"  ✅ Built {len(sequences):,} sequences")
-        logger.info(f"  ✅ Avg sequence length: {np.mean([s['length'] for s in sequences]):.1f} items")
-        logger.info(f"  ✅ Max sequence length: {max([s['length'] for s in sequences])} items")
+        avg_length = np.mean([s['length'] for s in sequences]) if sequences else 0
+        max_length = max([s['length'] for s in sequences]) if sequences else 0
+        logger.info(f"  ✅ Avg sequence length: {avg_length:.1f} items")
+        logger.info(f"  ✅ Max sequence length: {max_length} items")
         
         return sequences
     
     def mine_transition_patterns(self, sequences, min_support=2):
-        """Mine item-to-item transition patterns"""
+        """Mine both sequential and co-occurrence patterns"""
         logger.info(f"\nStep 3: Mining transition patterns (min_support={min_support}, smoothing={self.smoothing})...")
+        logger.info(f"  Strategy: Hybrid (sequential between orders + co-occurrence within orders)")
         
-        # Count transitions: item_i → item_j
-        transitions = defaultdict(lambda: defaultdict(int))
+        # Sequential transitions (between orders)
+        sequential_transitions = defaultdict(lambda: defaultdict(int))
+        
+        # Co-occurrence patterns (within same order)
+        cooccurrence_patterns = defaultdict(lambda: defaultdict(int))
+        
         item_counts = Counter()
         
         for seq_data in sequences:
-            seq = seq_data['items']
+            order_groups = seq_data.get('order_groups', [])
             
-            # Count item frequencies
-            for item in seq:
-                item_counts[item] += 1
-            
-            # Count transitions (bigrams)
-            for i in range(len(seq) - 1):
-                current_item = seq[i]
-                next_item = seq[i + 1]
+            if not order_groups:
+                # Fallback: use items sequence if order_groups not available
+                seq = seq_data['items']
+                for item in seq:
+                    item_counts[item] += 1
                 
-                if current_item != next_item:  # Skip same item transitions
-                    transitions[current_item][next_item] += 1
+                # Only learn transitions between different positions
+                for i in range(len(seq) - 1):
+                    current_item = seq[i]
+                    next_item = seq[i + 1]
+                    if current_item != next_item:
+                        sequential_transitions[current_item][next_item] += 1
+            else:
+                # Count item frequencies
+                for item in seq_data['items']:
+                    item_counts[item] += 1
+                
+                # 1. Learn sequential transitions (between orders)
+                for i in range(len(order_groups) - 1):
+                    current_order_items = order_groups[i]['items']
+                    next_order_items = order_groups[i + 1]['items']
+                    
+                    # Transition from last item of current order to first item of next order
+                    last_item_current = current_order_items[-1]
+                    first_item_next = next_order_items[0]
+                    
+                    if last_item_current != first_item_next:
+                        sequential_transitions[last_item_current][first_item_next] += 1
+                
+                # 2. Learn co-occurrence patterns (within same order)
+                for order_group in order_groups:
+                    items_in_order = order_group['items']
+                    
+                    # All pairs of items in the same order
+                    for i, item1 in enumerate(items_in_order):
+                        for item2 in items_in_order[i+1:]:
+                            if item1 != item2:
+                                # Bidirectional: A co-occurs with B means B co-occurs with A
+                                cooccurrence_patterns[item1][item2] += 1
+                                cooccurrence_patterns[item2][item1] += 1
         
-        # Calculate transition probabilities with Laplace smoothing
+        # Combine both patterns
         transition_probs = {}
         vocab_size = len(item_counts)  # Number of unique items
+        cooccurrence_weight = 0.5  # Co-occurrence has lower weight than sequential
         
-        for item, next_items in transitions.items():
-            total_transitions = sum(next_items.values())
-            
-            if total_transitions >= min_support:
+        # Process sequential transitions (higher priority)
+        sequential_count = 0
+        for item, next_items in sequential_transitions.items():
+            if item not in transition_probs:
                 transition_probs[item] = {}
-                for next_item, count in next_items.items():
-                    if count >= min_support:
-                        # Laplace smoothing: (count + alpha) / (total + alpha * vocab_size)
-                        prob = (count + self.smoothing) / (total_transitions + self.smoothing * vocab_size)
-                        transition_probs[item][next_item] = {
-                            'probability': prob,
+            
+            total = sum(next_items.values())
+            for next_item, count in next_items.items():
+                if count >= min_support:
+                    prob = (count + self.smoothing) / (total + self.smoothing * vocab_size)
+                    transition_probs[item][next_item] = {
+                        'probability': prob,
+                        'count': count,
+                        'confidence': count / total,
+                        'type': 'sequential'
+                    }
+                    sequential_count += 1
+        
+        # Process co-occurrence patterns (with lower weight)
+        cooccurrence_count = 0
+        for item, co_items in cooccurrence_patterns.items():
+            if item not in transition_probs:
+                transition_probs[item] = {}
+            
+            total = sum(co_items.values())
+            for co_item, count in co_items.items():
+                if count >= min_support:
+                    prob = (count + self.smoothing) / (total + self.smoothing * vocab_size)
+                    prob_weighted = prob * cooccurrence_weight  # Lower weight
+                    
+                    # If already exists from sequential, combine (take max)
+                    if co_item in transition_probs[item]:
+                        # Sequential has priority, but boost if also co-occurs
+                        existing_prob = transition_probs[item][co_item]['probability']
+                        transition_probs[item][co_item]['probability'] = max(existing_prob, prob_weighted)
+                        transition_probs[item][co_item]['type'] = 'both'
+                    else:
+                        transition_probs[item][co_item] = {
+                            'probability': prob_weighted,
                             'count': count,
-                            'confidence': count / total_transitions  # Raw confidence without smoothing
+                            'confidence': count / total,
+                            'type': 'cooccurrence'
                         }
+                        cooccurrence_count += 1
         
         logger.info(f"  ✅ Found {len(transition_probs):,} items with transitions")
-        
-        # Count total patterns
         total_patterns = sum(len(next_items) for next_items in transition_probs.values())
         logger.info(f"  ✅ Total transition patterns: {total_patterns:,}")
+        logger.info(f"    - Sequential patterns: {sequential_count:,}")
+        logger.info(f"    - Co-occurrence patterns: {cooccurrence_count:,}")
         
         # Show top patterns
         logger.info(f"\n  Top 10 strongest transitions:")
         all_transitions = []
         for item, next_items in transition_probs.items():
             for next_item, stats in next_items.items():
-                all_transitions.append((item, next_item, stats['probability'], stats['count']))
+                all_transitions.append((item, next_item, stats['probability'], stats['count'], stats.get('type', 'unknown')))
         
         all_transitions.sort(key=lambda x: (x[3], x[2]), reverse=True)  # Sort by count, then probability
         
-        for i, (item, next_item, prob, count) in enumerate(all_transitions[:10], 1):
-            logger.info(f"    {i}. Item {item} → Item {next_item}: {prob:.2%} ({count} times)")
+        for i, (item, next_item, prob, count, pattern_type) in enumerate(all_transitions[:10], 1):
+            logger.info(f"    {i}. Item {item} → Item {next_item}: {prob:.2%} ({count} times, {pattern_type})")
         
         return transition_probs, item_counts
     
