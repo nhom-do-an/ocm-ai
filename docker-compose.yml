@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-training-service
+    ports:
+      - "5001:5001"
+    environment:
+      # Database Configuration
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-testocm}
+      - DB_USER=${DB_USER:-zalolog}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      
+      # Flask Configuration
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5001
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+      
+      # Model Configuration
+      - MODEL_SAVE_DIR=results
+      - CACHE_EXPIRY_DAYS=${CACHE_EXPIRY_DAYS:-7}
+      
+      # Recommendation Model Hyperparameters
+      - RECOMMENDATION_EPOCHS=${RECOMMENDATION_EPOCHS:-20}
+      - RECOMMENDATION_BATCH_SIZE=${RECOMMENDATION_BATCH_SIZE:-256}
+      - RECOMMENDATION_LEARNING_RATE=${RECOMMENDATION_LEARNING_RATE:-0.001}
+      - RECOMMENDATION_EMBED_DIM=${RECOMMENDATION_EMBED_DIM:-32}
+      - RECOMMENDATION_HIDDEN_LAYERS=${RECOMMENDATION_HIDDEN_LAYERS:-64,32,16}
+      - WEIGHT_ORDER=${WEIGHT_ORDER:-1.0}
+      - WEIGHT_CART=${WEIGHT_CART:-0.3}
+      
+      # Trending Model Hyperparameters
+      - TRENDING_MAX_ROUNDS=${TRENDING_MAX_ROUNDS:-1000}
+      - TRENDING_EARLY_STOPPING=${TRENDING_EARLY_STOPPING:-50}
+      - TRENDING_LEARNING_RATE=${TRENDING_LEARNING_RATE:-0.05}
+      - TRENDING_MAX_DEPTH=${TRENDING_MAX_DEPTH:-6}
+      - TRENDING_NUM_LEAVES=${TRENDING_NUM_LEAVES:-31}
+      
+      # Next Item Model Configuration
+      - NEXT_ITEM_ORDER=${NEXT_ITEM_ORDER:-1}
+      - NEXT_ITEM_MIN_SUPPORT=${NEXT_ITEM_MIN_SUPPORT:-2}
+      - NEXT_ITEM_SMOOTHING=${NEXT_ITEM_SMOOTHING:-1.0}
+      
+      # Data Configuration
+      - TIME_SERIES_DAYS_BACK=${TIME_SERIES_DAYS_BACK:-180}
+      - MIN_ORDERS_REQUIRED=${MIN_ORDERS_REQUIRED:-100}
+      - MIN_USERS_REQUIRED=${MIN_USERS_REQUIRED:-20}
+      - MIN_ITEMS_REQUIRED=${MIN_ITEMS_REQUIRED:-10}
+      - MIN_DAYS_REQUIRED=${MIN_DAYS_REQUIRED:-30}
+      - MIN_TIME_SERIES_RECORDS=${MIN_TIME_SERIES_RECORDS:-20}
+    volumes:
+      - ./results:/app/results
+      - ./data:/app/data
+    networks:
+      - ai-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-service-postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME:-testocm}
+      - POSTGRES_USER=${DB_USER:-zalolog}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-123456}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-zalolog}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+
+networks:
+  ai-network:
+    driver: bridge
+
