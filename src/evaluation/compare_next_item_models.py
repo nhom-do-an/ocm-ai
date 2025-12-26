@@ -1,10 +1,13 @@
 """
 Compare Next Item Prediction Models
 Evaluates and compares different sequential recommendation approaches
+Only compares 3 models: Markov Chain (baseline), ItemKNN, GRU4Rec
 """
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 import logging
 import time
 import pickle
@@ -199,51 +202,38 @@ class NextItemComparison:
         # 2. Split data
         train_sequences, test_data = self.split_sequences(sequences)
         
-        # 3. Define models to compare
+        # 3. Define models to compare (only 3 models: baseline + 2 others)
         models_config = [
             {
-                'name': 'Markov Chain (Transition)',
-                'class': 'transition',  # Our original model
-                'params': {}
+                'name': 'Markov Chain',
+                'class': 'transition',  # Baseline: Pattern Mining
+                'params': {},
+                'type': 'Baseline'
             },
             {
-                'name': 'Item-KNN (k=20)',
+                'name': 'ItemKNN',
                 'class': ItemKNN,
-                'params': {'k': 20}
-            },
-            {
-                'name': 'Item-KNN (k=50)',
-                'class': ItemKNN,
-                'params': {'k': 50}
-            },
-            {
-                'name': 'FPMC (factors=32)',
-                'class': FPMC,
-                'params': {'n_factors': 32, 'n_epochs': 20}
-            },
-            {
-                'name': 'FPMC (factors=64)',
-                'class': FPMC,
-                'params': {'n_factors': 64, 'n_epochs': 20}
+                'params': {'k': 20},
+                'type': 'Collaborative Filtering'
             },
         ]
         
         # Add GRU4Rec if PyTorch is available
         if TORCH_AVAILABLE:
-            models_config.extend([
-                {
-                    'name': 'GRU4Rec (hidden=100)',
-                    'class': GRU4Rec,
-                    'params': {'hidden_size': 100, 'n_epochs': 10}
-                },
-                {
-                    'name': 'GRU4Rec (hidden=200)',
-                    'class': GRU4Rec,
-                    'params': {'hidden_size': 200, 'n_epochs': 10}
-                },
-            ])
+            models_config.append({
+                'name': 'GRU4Rec',
+                'class': GRU4Rec,
+                'params': {'hidden_size': 200, 'n_epochs': 10},
+                'type': 'Deep Learning'
+            })
         else:
-            logger.warning("PyTorch not available. Skipping GRU4Rec models.")
+            logger.warning("PyTorch not available. Skipping GRU4Rec. Using FPMC instead.")
+            models_config.append({
+                'name': 'FPMC',
+                'class': FPMC,
+                'params': {'n_factors': 64, 'n_epochs': 20},
+                'type': 'Deep Learning'
+            })
         
         # 4. Train and evaluate each model
         all_results = []
@@ -273,14 +263,18 @@ class NextItemComparison:
                 # Evaluate model
                 results = self.evaluate_model(model, test_data, model_name)
                 results['train_time'] = train_time
+                results['model_type'] = config.get('type', 'Unknown')
                 
                 all_results.append(results)
                 
-                # Save model
-                model_path = self.results_dir / f"{model_name.replace(' ', '_').replace('(', '').replace(')', '')}_model.pkl"
-                with open(model_path, 'wb') as f:
-                    pickle.dump(model, f)
-                logger.info(f"Model saved: {model_path}")
+                # Save model (skip for TransitionModel as it's a local class and can't be pickled)
+                if config['class'] != 'transition':
+                    model_path = self.results_dir / f"{model_name.replace(' ', '_').replace('(', '').replace(')', '')}_model.pkl"
+                    with open(model_path, 'wb') as f:
+                        pickle.dump(model, f)
+                    logger.info(f"Model saved: {model_path}")
+                else:
+                    logger.info(f"Skipping model save for {model_name} (local class, can't pickle)")
                 
             except Exception as e:
                 logger.error(f"Failed to train {model_name}: {str(e)}")
@@ -308,14 +302,20 @@ class NextItemComparison:
         display_df = results_df.copy()
         
         # Round numeric columns
-        numeric_cols = [col for col in display_df.columns if col != 'model']
+        numeric_cols = [col for col in display_df.columns if col != 'model' and col != 'model_type']
         for col in numeric_cols:
             if 'time' in col:
-                display_df[col] = display_df[col].apply(lambda x: f"{x:.2f}s")
+                display_df[col] = display_df[col].apply(
+                    lambda x: f"{float(x):.2f}s" if pd.notna(x) and isinstance(x, (int, float, np.number)) else str(x) if pd.notna(x) else "N/A"
+                )
             elif 'cases' in col:
-                display_df[col] = display_df[col].astype(int)
+                display_df[col] = display_df[col].apply(
+                    lambda x: int(x) if pd.notna(x) and isinstance(x, (int, float, np.number)) else x
+                )
             else:
-                display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}")
+                display_df[col] = display_df[col].apply(
+                    lambda x: f"{float(x):.4f}" if pd.notna(x) and isinstance(x, (int, float, np.number)) else str(x) if pd.notna(x) else "N/A"
+                )
         
         print(display_df.to_string(index=False))
         
@@ -327,6 +327,10 @@ class NextItemComparison:
         logger.info(f"BEST MODEL: {best_model}")
         logger.info(f"NDCG@10: {best_ndcg:.4f}")
         logger.info(f"{'='*70}\n")
+        
+        # Create visualizations
+        logger.info("Creating visualizations...")
+        self.create_visualizations(results_df)
         
         return results_df
     
@@ -370,6 +374,160 @@ class NextItemComparison:
         model = TransitionModel()
         model.fit(sequences)
         return model
+    
+    def create_visualizations(self, results_df):
+        """Create comparison visualizations"""
+        viz_dir = self.results_dir / 'visualizations'
+        viz_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Set style
+        sns.set_style("whitegrid")
+        plt.rcParams['figure.figsize'] = (12, 6)
+        plt.rcParams['font.size'] = 10
+        
+        # 1. Bar plot of main metrics
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        
+        metrics = ['hit_rate@10', 'ndcg@10', 'mrr@10', 'train_time']
+        titles = ['Hit Rate@10', 'NDCG@10', 'MRR@10', 'Training Time (s)']
+        
+        for idx, (metric, title) in enumerate(zip(metrics, titles)):
+            ax = axes[idx // 2, idx % 2]
+            
+            # Sort by metric value
+            sorted_df = results_df.sort_values(metric, ascending=(metric != 'train_time'))
+            
+            # Color by model type
+            colors = []
+            for model_type in sorted_df['model_type']:
+                if model_type == 'Baseline':
+                    colors.append('#3498db')
+                elif model_type == 'Collaborative Filtering':
+                    colors.append('#2ecc71')
+                else:
+                    colors.append('#e74c3c')
+            
+            bars = ax.barh(sorted_df['model'], sorted_df[metric], color=colors)
+            
+            # Highlight best (lowest for train_time, highest for others)
+            if metric == 'train_time':
+                best_idx = sorted_df[metric].idxmin()
+            else:
+                best_idx = sorted_df[metric].idxmax()
+            bars[sorted_df.index.get_loc(best_idx)].set_edgecolor('gold')
+            bars[sorted_df.index.get_loc(best_idx)].set_linewidth(3)
+            
+            ax.set_xlabel(title)
+            ax.set_title(f'{title} Comparison')
+            ax.grid(axis='x', alpha=0.3)
+            
+            # Add value labels
+            for i, v in enumerate(sorted_df[metric]):
+                if metric == 'train_time':
+                    label = f' {v:.2f}s' if v >= 0.01 else f' {v*1000:.2f}ms'
+                else:
+                    label = f' {v:.4f}'
+                ax.text(v, i, label, va='center')
+        
+        plt.tight_layout()
+        plt.savefig(viz_dir / 'metrics_comparison.png', dpi=300, bbox_inches='tight')
+        logger.info(f"Saved: {viz_dir / 'metrics_comparison.png'}")
+        plt.close()
+        
+        # 2. Performance vs Speed scatter plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Color by model type
+        color_map = {
+            'Baseline': '#3498db',
+            'Collaborative Filtering': '#2ecc71',
+            'Deep Learning': '#e74c3c'
+        }
+        
+        for model_type in results_df['model_type'].unique():
+            mask = results_df['model_type'] == model_type
+            ax.scatter(
+                results_df[mask]['train_time'],
+                results_df[mask]['hit_rate@10'],
+                c=color_map.get(model_type, 'gray'),
+                s=200,
+                alpha=0.7,
+                label=model_type
+            )
+            
+            # Add labels
+            for _, row in results_df[mask].iterrows():
+                ax.annotate(
+                    row['model'],
+                    (row['train_time'], row['hit_rate@10']),
+                    xytext=(5, 5),
+                    textcoords='offset points',
+                    fontsize=10,
+                    fontweight='bold'
+                )
+        
+        ax.set_xlabel('Training Time (seconds)', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Hit Rate@10', fontsize=12, fontweight='bold')
+        ax.set_title('Next Item Models: Performance vs Speed Trade-off', fontsize=14, fontweight='bold', pad=20)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(viz_dir / 'performance_vs_speed.png', dpi=300, bbox_inches='tight')
+        logger.info(f"Saved: {viz_dir / 'performance_vs_speed.png'}")
+        plt.close()
+        
+        # 3. Radar chart for all models
+        fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
+        
+        categories = ['Hit Rate@10', 'NDCG@10', 'MRR@10']
+        num_vars = len(categories)
+        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+        angles += angles[:1]  # Complete the circle
+        
+        # Normalize metrics to 0-1 for radar chart
+        metrics_to_plot = ['hit_rate@10', 'ndcg@10', 'mrr@10']
+        normalized_df = results_df.copy()
+        for metric in metrics_to_plot:
+            max_val = normalized_df[metric].max()
+            min_val = normalized_df[metric].min()
+            if max_val > min_val:
+                normalized_df[f'{metric}_norm'] = (normalized_df[metric] - min_val) / (max_val - min_val)
+            else:
+                normalized_df[f'{metric}_norm'] = 1.0
+        
+        color_map_radar = {
+            'Baseline': '#3498db',
+            'Collaborative Filtering': '#2ecc71',
+            'Deep Learning': '#e74c3c'
+        }
+        
+        for _, row in results_df.iterrows():
+            values = [
+                normalized_df.loc[row.name, 'hit_rate@10_norm'],
+                normalized_df.loc[row.name, 'ndcg@10_norm'],
+                normalized_df.loc[row.name, 'mrr@10_norm']
+            ]
+            values += values[:1]  # Complete the circle
+            
+            ax.plot(angles, values, 'o-', linewidth=2, 
+                   label=row['model'], 
+                   color=color_map_radar.get(row['model_type'], 'gray'))
+            ax.fill(angles, values, alpha=0.1, color=color_map_radar.get(row['model_type'], 'gray'))
+        
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(categories)
+        ax.set_ylim(0, 1.1)
+        ax.set_title('Next Item Models - Performance Radar Chart', size=14, pad=20)
+        ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0))
+        ax.grid(True)
+        
+        plt.tight_layout()
+        plt.savefig(viz_dir / 'radar_chart.png', dpi=300, bbox_inches='tight')
+        logger.info(f"Saved: {viz_dir / 'radar_chart.png'}")
+        plt.close()
+        
+        logger.info(f"All visualizations saved to: {viz_dir}")
 
 
 def main():

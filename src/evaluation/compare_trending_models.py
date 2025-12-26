@@ -20,24 +20,44 @@ results_dir = project_root / 'results' / 'trending'
 
 
 def load_all_results():
-    """Load results from all trending models"""
+    """Load results from trending models - only 3 models: MA_14 (baseline), LSTM, LightGBM"""
     
-    print("Loading results from all trending models...\n")
+    print("Loading results from trending models (only 3: MA_14, LSTM, LightGBM)...\n")
     
-    # Load baseline models
+    # Load baseline models - filter to only MA_14
     baseline_file = results_dir / 'baseline_models_all_stores.csv'
     if baseline_file.exists():
         baseline_df = pd.read_csv(baseline_file)
-        print(f"✓ Baseline models: {len(baseline_df)} models")
+        # Filter to only MA_14
+        baseline_df = baseline_df[baseline_df['model_name'].str.contains('MA_14|Moving Average', case=False, na=False)].copy()
+        baseline_df['model_name'] = 'MA_14'
+        baseline_df['model_type'] = 'Baseline'
+        print(f"✓ Baseline model (MA_14): {len(baseline_df)} records")
     else:
         print(f"✗ Baseline models not found: {baseline_file}")
         baseline_df = pd.DataFrame()
     
-    # Load LSTM results
+    # Load LSTM results - only take best variant (lowest MAE) if multiple exist
     lstm_file = results_dir / 'lstm_models_results.csv'
     if lstm_file.exists():
         lstm_df = pd.read_csv(lstm_file)
-        print(f"✓ LSTM models: {len(lstm_df)} models")
+        original_count = len(lstm_df)
+        # If multiple LSTM variants exist, take the best one (lowest MAE) per store
+        if len(lstm_df) > 1:
+            # Group by store_id if exists, otherwise take overall best
+            if 'store_id' in lstm_df.columns:
+                # Take best LSTM per store (lowest MAE)
+                lstm_df = lstm_df.loc[lstm_df.groupby('store_id')['mae'].idxmin()].copy()
+                print(f"✓ LSTM model: Selected best variant per store from {original_count} total variants → {len(lstm_df)} records")
+            else:
+                # Take overall best LSTM (lowest MAE)
+                best_variant = lstm_df.loc[lstm_df['mae'].idxmin(), 'model_name']
+                lstm_df = lstm_df.loc[[lstm_df['mae'].idxmin()]].copy()
+                print(f"✓ LSTM model: Selected best variant '{best_variant}' (lowest MAE) from {original_count} variants")
+        else:
+            print(f"✓ LSTM model: {len(lstm_df)} records")
+        lstm_df['model_name'] = 'LSTM'
+        lstm_df['model_type'] = 'Deep Learning'
     else:
         print(f"✗ LSTM models not found: {lstm_file}")
         lstm_df = pd.DataFrame()
@@ -46,7 +66,9 @@ def load_all_results():
     lgb_file = results_dir / 'lightgbm_results.csv'
     if lgb_file.exists():
         lgb_df = pd.read_csv(lgb_file)
-        print(f"✓ LightGBM models: {len(lgb_df)} models")
+        lgb_df['model_name'] = 'LightGBM'
+        lgb_df['model_type'] = 'Gradient Boosting'
+        print(f"✓ LightGBM model: {len(lgb_df)} records")
     else:
         print(f"✗ LightGBM models not found: {lgb_file}")
         lgb_df = pd.DataFrame()
@@ -55,20 +77,17 @@ def load_all_results():
     all_results = []
     
     if not baseline_df.empty:
-        baseline_df['model_type'] = 'Baseline'
         all_results.append(baseline_df)
     
     if not lstm_df.empty:
-        lstm_df['model_type'] = 'Deep Learning'
         all_results.append(lstm_df)
     
     if not lgb_df.empty:
-        lgb_df['model_type'] = 'Gradient Boosting'
         all_results.append(lgb_df)
     
     if all_results:
         combined_df = pd.concat(all_results, ignore_index=True)
-        print(f"\nTotal models: {len(combined_df)}")
+        print(f"\nTotal models: {len(combined_df['model_name'].unique())} ({', '.join(combined_df['model_name'].unique())})")
         return combined_df
     else:
         print("\n⚠ No results found!")
@@ -94,15 +113,30 @@ def create_mae_comparison(df, output_dir):
             colors.append('#2ecc71')
     
     # Plot
-    plt.barh(range(len(df_sorted)), df_sorted['mae'], color=colors)
+    bars = plt.barh(range(len(df_sorted)), df_sorted['mae'], color=colors)
+    
+    # Highlight best model (lowest MAE) with gold border
+    best_idx = df_sorted['mae'].idxmin()
+    best_bar_idx = df_sorted.index.get_loc(best_idx)
+    bars[best_bar_idx].set_edgecolor('gold')
+    bars[best_bar_idx].set_linewidth(3)
+    bars[best_bar_idx].set_alpha(0.9)
+    
     plt.yticks(range(len(df_sorted)), df_sorted['model_name'])
     plt.xlabel('Mean Absolute Error (MAE)', fontsize=12, fontweight='bold')
     plt.ylabel('Model', fontsize=12, fontweight='bold')
-    plt.title('Trending Prediction Models - MAE Comparison', fontsize=14, fontweight='bold', pad=20)
+    best_model = df_sorted.loc[best_idx, 'model_name']
+    best_mae = df_sorted.loc[best_idx, 'mae']
+    plt.title(f'Trending Prediction Models - MAE Comparison (🥇 Best: {best_model})', 
+              fontsize=14, fontweight='bold', pad=20)
     
     # Add value labels
     for i, (mae, model_type) in enumerate(zip(df_sorted['mae'], df_sorted['model_type'])):
-        plt.text(mae, i, f' {mae:.4f}', va='center', fontsize=9)
+        label = f' {mae:.4f}'
+        if i == best_bar_idx:
+            label = f' 🥇{mae:.4f}'
+        plt.text(mae, i, label, va='center', fontsize=9, 
+                fontweight='bold' if i == best_bar_idx else 'normal')
     
     # Legend
     from matplotlib.patches import Patch

@@ -18,13 +18,40 @@ project_root = Path(__file__).parent.parent.parent
 
 
 def load_results():
-    """Load all model results"""
+    """Load all model results - only 3 models: Popularity (baseline), ItemKNN, NeuMF"""
     results_path = project_root / 'results' / 'recommendation'
     
     # Load sklearn results
     sklearn_results = pd.read_csv(results_path / 'all_stores_sklearn_results.csv')
     
-    return sklearn_results
+    # Filter to only 3 models: Popularity (baseline), ItemKNN, NeuMF
+    # Map model names to standard names
+    model_mapping = {
+        'Popularity': 'Popularity',
+        'ItemKNN_k20': 'ItemKNN',
+        'ItemKNN': 'ItemKNN',
+        'NeuMF': 'NeuMF'
+    }
+    
+    # Filter and rename
+    filtered_results = sklearn_results[sklearn_results['model_name'].isin(model_mapping.keys())].copy()
+    filtered_results['model_name'] = filtered_results['model_name'].map(model_mapping)
+    
+    # Load NeuMF results if exists
+    neumf_file = results_path / 'neumf_results.csv'
+    if neumf_file.exists():
+        neumf_results = pd.read_csv(neumf_file)
+        neumf_results['model_name'] = 'NeuMF'
+        filtered_results = pd.concat([filtered_results, neumf_results], ignore_index=True)
+    
+    # Add model type
+    filtered_results['model_type'] = filtered_results['model_name'].map({
+        'Popularity': 'Baseline',
+        'ItemKNN': 'Collaborative Filtering',
+        'NeuMF': 'Deep Learning'
+    })
+    
+    return filtered_results
 
 
 def create_comparison_plots(results):
@@ -39,7 +66,8 @@ def create_comparison_plots(results):
         'ndcg@10': 'mean',
         'hit_rate@10': 'mean',
         'train_time': 'mean',
-        'eval_time': 'mean'
+        'eval_time': 'mean',
+        'model_type': 'first'  # Keep model_type (same for all rows of same model)
     }).reset_index()
     
     # Sort by NDCG
@@ -54,19 +82,35 @@ def create_comparison_plots(results):
     for idx, (metric, title) in enumerate(zip(metrics, titles)):
         ax = axes[idx // 2, idx % 2]
         
-        bars = ax.barh(avg_results['model_name'], avg_results[metric])
+        # Color by model type
+        color_map = {
+            'Baseline': '#3498db',
+            'Collaborative Filtering': '#2ecc71',
+            'Deep Learning': '#e74c3c'
+        }
+        colors = [color_map.get(avg_results.loc[i, 'model_type'], 'gray') 
+                 for i in avg_results.index]
         
-        # Color the best model
+        bars = ax.barh(avg_results['model_name'], avg_results[metric], color=colors)
+        
+        # Highlight the best model with gold border
         best_idx = avg_results[metric].idxmax()
-        bars[best_idx].set_color('green')
+        best_bar_idx = avg_results.index.get_loc(best_idx)
+        bars[best_bar_idx].set_edgecolor('gold')
+        bars[best_bar_idx].set_linewidth(3)
+        bars[best_bar_idx].set_alpha(0.9)
         
-        ax.set_xlabel(title)
-        ax.set_title(f'{title} Comparison')
+        ax.set_xlabel(title, fontweight='bold')
+        ax.set_title(f'{title} Comparison (🥇 Best: {avg_results.loc[best_idx, "model_name"]})', 
+                    fontweight='bold')
         ax.grid(axis='x', alpha=0.3)
         
         # Add value labels
         for i, v in enumerate(avg_results[metric]):
-            ax.text(v, i, f' {v:.4f}', va='center')
+            label = f' {v:.4f}'
+            if i == best_bar_idx:
+                label = f' 🥇{v:.4f}'
+            ax.text(v, i, label, va='center', fontweight='bold' if i == best_bar_idx else 'normal')
     
     plt.tight_layout()
     plt.savefig(output_dir / 'metrics_comparison.png', dpi=300, bbox_inches='tight')
