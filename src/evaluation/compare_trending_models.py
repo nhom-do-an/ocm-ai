@@ -197,6 +197,69 @@ def create_mape_comparison(df, output_dir):
     plt.close()
 
 
+def create_rmse_comparison(df, output_dir):
+    """Create RMSE comparison plot"""
+    
+    if 'rmse' not in df.columns:
+        print("⚠ No RMSE column found")
+        return
+    
+    plt.figure(figsize=(14, 8))
+    
+    # Sort by RMSE
+    df_sorted = df.sort_values('rmse')
+    
+    # Create color map by model type
+    colors = []
+    for model_type in df_sorted['model_type']:
+        if model_type == 'Baseline':
+            colors.append('#3498db')
+        elif model_type == 'Deep Learning':
+            colors.append('#e74c3c')
+        else:
+            colors.append('#2ecc71')
+    
+    # Plot
+    bars = plt.barh(range(len(df_sorted)), df_sorted['rmse'], color=colors)
+    
+    # Highlight best model (lowest RMSE) with gold border
+    best_idx = df_sorted['rmse'].idxmin()
+    best_bar_idx = df_sorted.index.get_loc(best_idx)
+    bars[best_bar_idx].set_edgecolor('gold')
+    bars[best_bar_idx].set_linewidth(3)
+    bars[best_bar_idx].set_alpha(0.9)
+    
+    plt.yticks(range(len(df_sorted)), df_sorted['model_name'])
+    plt.xlabel('Root Mean Squared Error (RMSE)', fontsize=12, fontweight='bold')
+    plt.ylabel('Model', fontsize=12, fontweight='bold')
+    best_model = df_sorted.loc[best_idx, 'model_name']
+    best_rmse = df_sorted.loc[best_idx, 'rmse']
+    plt.title(f'Trending Prediction Models - RMSE Comparison (🥇 Best: {best_model})', 
+              fontsize=14, fontweight='bold', pad=20)
+    
+    # Add value labels
+    for i, (rmse, model_type) in enumerate(zip(df_sorted['rmse'], df_sorted['model_type'])):
+        label = f' {rmse:.4f}'
+        if i == best_bar_idx:
+            label = f' 🥇{rmse:.4f}'
+        plt.text(rmse, i, label, va='center', fontsize=9, 
+                fontweight='bold' if i == best_bar_idx else 'normal')
+    
+    # Legend
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#3498db', label='Baseline'),
+        Patch(facecolor='#e74c3c', label='Deep Learning'),
+        Patch(facecolor='#2ecc71', label='Gradient Boosting')
+    ]
+    plt.legend(handles=legend_elements, loc='lower right')
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'rmse_comparison.png', dpi=300, bbox_inches='tight')
+    print("✓ Saved: rmse_comparison.png")
+    plt.close()
+
+
 def create_top_k_comparison(df, output_dir):
     """Create Top-K accuracy comparison plot"""
     
@@ -524,6 +587,7 @@ def create_comprehensive_comparison():
     
     # Create plots
     create_mae_comparison(df, output_dir)
+    create_rmse_comparison(df, output_dir)  # Add RMSE comparison
     create_mape_comparison(df, output_dir)
     create_top_k_comparison(df, output_dir)
     create_train_time_comparison(df, output_dir)

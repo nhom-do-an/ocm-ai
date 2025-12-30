@@ -352,24 +352,67 @@ class NextItemTrainer:
         # Build item sequences
         sequences = self.build_item_sequences(df)
         
-        # Mine transition patterns
-        transition_probs, item_counts = self.mine_transition_patterns(sequences, min_support=self.min_support)
+        # Step: Temporal train/val/test split (70/15/15)
+        logger.info(f"\nStep 2.5: Temporal train/val/test split (70/15/15)...")
         
-        # Mine category patterns
-        category_probs = self.mine_product_type_patterns(df)
+        # Sort sequences by first order date (temporal split)
+        sequences_with_dates = []
+        for seq in sequences:
+            if seq.get('order_groups'):
+                first_order_date = seq['order_groups'][0]['created_at']
+            else:
+                # Fallback: use customer's first purchase date from df
+                customer_data = df[df['customer_id'] == seq['customer_id']]
+                if len(customer_data) > 0:
+                    first_order_date = customer_data['created_at'].min()
+                else:
+                    first_order_date = datetime.now()
+            sequences_with_dates.append((first_order_date, seq))
+        
+        # Sort by date
+        sequences_with_dates.sort(key=lambda x: x[0])
+        
+        # Split indices: 70% train, 15% val, 15% test
+        split1_idx = int(len(sequences_with_dates) * 0.7)
+        split2_idx = int(len(sequences_with_dates) * 0.85)
+        
+        train_sequences = [seq for _, seq in sequences_with_dates[:split1_idx]]
+        val_sequences = [seq for _, seq in sequences_with_dates[split1_idx:split2_idx]]
+        test_sequences = [seq for _, seq in sequences_with_dates[split2_idx:]]
+        
+        logger.info(f"  ✅ Train: {len(train_sequences):,} sequences ({len(train_sequences)/len(sequences)*100:.1f}%)")
+        logger.info(f"  ✅ Validation: {len(val_sequences):,} sequences ({len(val_sequences)/len(sequences)*100:.1f}%)")
+        logger.info(f"  ✅ Test: {len(test_sequences):,} sequences ({len(test_sequences)/len(sequences)*100:.1f}%)")
+        
+        # Mine transition patterns from TRAIN set only
+        logger.info(f"\nStep 3: Mining transition patterns from TRAIN set...")
+        transition_probs, item_counts = self.mine_transition_patterns(train_sequences, min_support=self.min_support)
+        
+        # Mine category patterns from TRAIN set only
+        train_df = df[df['customer_id'].isin([s['customer_id'] for s in train_sequences])]
+        category_probs = self.mine_product_type_patterns(train_df)
         
         training_time = time.time() - start_time
         
         logger.info(f"\n✅ Next item prediction model trained in {training_time:.2f}s")
+        logger.info(f"  ✅ Trained on {len(train_sequences):,} sequences")
+        logger.info(f"  ✅ Validation set: {len(val_sequences):,} sequences")
+        logger.info(f"  ✅ Test set: {len(test_sequences):,} sequences")
         
         # Prepare results
         result = {
             'transition_patterns': transition_probs,
             'category_patterns': category_probs,
             'item_counts': dict(item_counts),
+            'train_sequences': train_sequences,
+            'val_sequences': val_sequences,
+            'test_sequences': test_sequences,
             'metrics': {
                 'num_customers': int(df['customer_id'].nunique()),
                 'num_sequences': len(sequences),
+                'num_train_sequences': len(train_sequences),
+                'num_val_sequences': len(val_sequences),
+                'num_test_sequences': len(test_sequences),
                 'num_items': len(item_counts),
                 'num_transitions': sum(len(next_items) for next_items in transition_probs.values()),
                 'num_category_transitions': sum(len(next_cats) for next_cats in category_probs.values()),

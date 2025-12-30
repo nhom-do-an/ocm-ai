@@ -42,6 +42,74 @@ def load_results():
     if neumf_file.exists():
         neumf_results = pd.read_csv(neumf_file)
         neumf_results['model_name'] = 'NeuMF'
+        
+        # Try to load AUC from saved model files if not in CSV
+        if 'auc' not in neumf_results.columns:
+            import torch
+            from pathlib import Path
+            
+            # Try multiple possible paths for model files
+            # Models are saved in: ocm-ai/api/results/store_X/recommendation/neumf_model.pth
+            possible_base_dirs = [
+                project_root.parent / 'ocm-ai' / 'api' / 'results',  # ocm-ai/api/results
+                project_root / 'results',  # ocm-ai/results
+                project_root.parent / 'ocm-ai' / 'models',  # ocm-ai/models
+                Path(__file__).parent.parent.parent / 'api' / 'results',  # From src/evaluation
+            ]
+            
+            model_base_dir = None
+            for base_dir in possible_base_dirs:
+                # Check if at least one store directory exists
+                if base_dir.exists():
+                    store_dirs = [d for d in base_dir.iterdir() if d.is_dir() and d.name.startswith('store_')]
+                    if store_dirs:
+                        model_base_dir = base_dir
+                        print(f"  Found model directory: {model_base_dir}")
+                        break
+            
+            auc_values = []
+            if model_base_dir:
+                print(f"  Loading AUC from model files in: {model_base_dir}")
+                for idx, row in neumf_results.iterrows():
+                    store_id = row.get('store_id', None)
+                    if store_id:
+                        # Try different path patterns (models are saved in results/store_X/recommendation/neumf_model.pth)
+                        model_paths = [
+                            model_base_dir / f'store_{store_id}' / 'recommendation' / 'neumf_model.pth',
+                            model_base_dir / f'store_{store_id}' / 'neumf_model.pth',
+                            model_base_dir / 'recommendation' / f'store_{store_id}' / 'neumf_model.pth',
+                        ]
+                        
+                        auc_found = False
+                        for model_path in model_paths:
+                            if model_path.exists():
+                                try:
+                                    model_data = torch.load(model_path, map_location='cpu', weights_only=False)
+                                    if isinstance(model_data, dict) and 'metrics' in model_data:
+                                        if 'auc' in model_data['metrics']:
+                                            auc_values.append(model_data['metrics']['auc'])
+                                            auc_found = True
+                                            print(f"    ✓ Store {store_id}: AUC = {model_data['metrics']['auc']:.4f}")
+                                            break
+                                except Exception as e:
+                                    continue
+                        
+                        if not auc_found:
+                            auc_values.append(None)
+                            print(f"    ✗ Store {store_id}: AUC not found")
+                    else:
+                        auc_values.append(None)
+            else:
+                print(f"  ⚠ Model directory not found, cannot load AUC from model files")
+                auc_values = [None] * len(neumf_results)
+            
+            # Add AUC column if we found any values
+            if any(auc is not None for auc in auc_values):
+                neumf_results['auc'] = auc_values
+                print(f"  ✅ Added AUC column to NeuMF results")
+            else:
+                print(f"  ⚠ No AUC values found in model files")
+        
         filtered_results = pd.concat([filtered_results, neumf_results], ignore_index=True)
     
     # Add model type
@@ -60,7 +128,7 @@ def create_comparison_plots(results):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Calculate average metrics across stores
-    avg_results = results.groupby('model_name').agg({
+    agg_dict = {
         'precision@10': 'mean',
         'recall@10': 'mean',
         'ndcg@10': 'mean',
@@ -68,7 +136,13 @@ def create_comparison_plots(results):
         'train_time': 'mean',
         'eval_time': 'mean',
         'model_type': 'first'  # Keep model_type (same for all rows of same model)
-    }).reset_index()
+    }
+    
+    # Add AUC if it exists
+    if 'auc' in results.columns:
+        agg_dict['auc'] = 'mean'
+    
+    avg_results = results.groupby('model_name').agg(agg_dict).reset_index()
     
     # Sort by NDCG
     avg_results = avg_results.sort_values('ndcg@10', ascending=False)
@@ -116,6 +190,66 @@ def create_comparison_plots(results):
     plt.savefig(output_dir / 'metrics_comparison.png', dpi=300, bbox_inches='tight')
     print(f"Saved: {output_dir / 'metrics_comparison.png'}")
     plt.close()
+    
+    # 1b. AUC comparison (separate plot if AUC exists)
+    # Filter to only models that have AUC values
+    if 'auc' in avg_results.columns:
+        auc_available = avg_results[avg_results['auc'].notna()].copy()
+        
+        if len(auc_available) > 0:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Sort by AUC
+            auc_sorted = auc_available.sort_values('auc', ascending=False)
+            
+            # Color by model type
+            color_map = {
+                'Baseline': '#3498db',
+                'Collaborative Filtering': '#2ecc71',
+                'Deep Learning': '#e74c3c'
+            }
+            colors = [color_map.get(auc_sorted.loc[i, 'model_type'], 'gray') 
+                     for i in auc_sorted.index]
+            
+            bars = ax.barh(auc_sorted['model_name'], auc_sorted['auc'], color=colors)
+            
+            # Highlight the best model with gold border
+            best_idx = auc_sorted['auc'].idxmax()
+            best_bar_idx = auc_sorted.index.get_loc(best_idx)
+            bars[best_bar_idx].set_edgecolor('gold')
+            bars[best_bar_idx].set_linewidth(3)
+            bars[best_bar_idx].set_alpha(0.9)
+            
+            ax.set_xlabel('AUC (Area Under ROC Curve)', fontweight='bold')
+            ax.set_title(f'AUC Comparison (🥇 Best: {auc_sorted.loc[best_idx, "model_name"]})', 
+                        fontweight='bold')
+            ax.grid(axis='x', alpha=0.3)
+            
+            # Add value labels
+            for i, v in enumerate(auc_sorted['auc']):
+                label = f' {v:.4f}'
+                if i == best_bar_idx:
+                    label = f' 🥇{v:.4f}'
+                ax.text(v, i, label, va='center', fontweight='bold' if i == best_bar_idx else 'normal')
+            
+            # Add note if some models don't have AUC
+            models_without_auc = avg_results[avg_results['auc'].isna()]['model_name'].tolist()
+            if models_without_auc:
+                note_text = f"Note: {', '.join(models_without_auc)} models do not calculate AUC\n(Only NeuMF includes AUC in training metrics)"
+                ax.text(0.02, 0.98, note_text, transform=ax.transAxes, 
+                       fontsize=9, verticalalignment='top', 
+                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            
+            plt.tight_layout()
+            plt.savefig(output_dir / 'auc_comparison.png', dpi=300, bbox_inches='tight')
+            print(f"Saved: {output_dir / 'auc_comparison.png'}")
+            print(f"  Note: Only {len(auc_available)} model(s) have AUC: {auc_available['model_name'].tolist()}")
+            if len(avg_results) > len(auc_available):
+                missing = avg_results[avg_results['auc'].isna()]['model_name'].tolist()
+                print(f"  Missing AUC: {missing}")
+            plt.close()
+        else:
+            print("⚠ Skipping AUC visualization: No models have AUC values")
     
     # 2. Precision-Recall tradeoff
     fig, ax = plt.subplots(figsize=(10, 6))
