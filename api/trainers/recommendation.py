@@ -3,12 +3,13 @@ Recommendation model trainer
 """
 
 import torch
+import torch.nn as nn
 import logging
 import time
 import sys
 import numpy as np
 from pathlib import Path
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 # Add parent and project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,9 +17,92 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from config import config
 from data_extraction import extract_interactions
-from src.models.recommendation.train_neumf import NeuMF, InteractionDataset
 
 logger = logging.getLogger(__name__)
+
+
+class InteractionDataset(Dataset):
+    """PyTorch Dataset for user-item interactions"""
+
+    def __init__(self, interactions_df, all_users, all_items):
+        self.interactions = interactions_df
+
+        # Create user and item mappings
+        self.user_to_idx = {user_id: idx for idx, user_id in enumerate(all_users)}
+        self.item_to_idx = {item_id: idx for idx, item_id in enumerate(all_items)}
+
+        # Prepare data
+        self.users = torch.LongTensor([self.user_to_idx[uid] for uid in interactions_df['user_id']])
+        self.items = torch.LongTensor([self.item_to_idx[iid] for iid in interactions_df['item_id']])
+        self.ratings = torch.FloatTensor(interactions_df['weight'].values)
+
+    def __len__(self):
+        return len(self.interactions)
+
+    def __getitem__(self, idx):
+        return self.users[idx], self.items[idx], self.ratings[idx]
+
+
+class NeuMF(nn.Module):
+    """Neural Collaborative Filtering (NeuMF) model combining GMF and MLP"""
+
+    def __init__(self, n_users, n_items, embed_dim=32, hidden_layers=(64, 32, 16)):
+        super(NeuMF, self).__init__()
+
+        # GMF part
+        self.user_embed_gmf = nn.Embedding(n_users, embed_dim)
+        self.item_embed_gmf = nn.Embedding(n_items, embed_dim)
+
+        # MLP part
+        self.user_embed_mlp = nn.Embedding(n_users, embed_dim)
+        self.item_embed_mlp = nn.Embedding(n_items, embed_dim)
+
+        # MLP layers
+        mlp_layers = []
+        input_size = embed_dim * 2
+        for hidden_size in hidden_layers:
+            mlp_layers.append(nn.Linear(input_size, hidden_size))
+            mlp_layers.append(nn.ReLU())
+            mlp_layers.append(nn.Dropout(0.2))
+            input_size = hidden_size
+
+        self.mlp_layers = nn.Sequential(*mlp_layers)
+
+        # Final prediction layer
+        self.predict_layer = nn.Linear(embed_dim + hidden_layers[-1], 1)
+
+        # Initialize weights
+        self._init_weights()
+
+    def _init_weights(self):
+        nn.init.normal_(self.user_embed_gmf.weight, std=0.01)
+        nn.init.normal_(self.item_embed_gmf.weight, std=0.01)
+        nn.init.normal_(self.user_embed_mlp.weight, std=0.01)
+        nn.init.normal_(self.item_embed_mlp.weight, std=0.01)
+
+        for layer in self.mlp_layers:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+
+        nn.init.xavier_uniform_(self.predict_layer.weight)
+
+    def forward(self, user_indices, item_indices):
+        # GMF part
+        user_embed_gmf = self.user_embed_gmf(user_indices)
+        item_embed_gmf = self.item_embed_gmf(item_indices)
+        gmf_output = user_embed_gmf * item_embed_gmf
+
+        # MLP part
+        user_embed_mlp = self.user_embed_mlp(user_indices)
+        item_embed_mlp = self.item_embed_mlp(item_indices)
+        mlp_input = torch.cat([user_embed_mlp, item_embed_mlp], dim=-1)
+        mlp_output = self.mlp_layers(mlp_input)
+
+        # Concatenate GMF and MLP parts
+        concat = torch.cat([gmf_output, mlp_output], dim=-1)
+        prediction = self.predict_layer(concat)
+
+        return prediction
 
 
 class RecommendationTrainer:
