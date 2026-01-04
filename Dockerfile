@@ -8,14 +8,15 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
-    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install numpy and Cython first to avoid scikit-surprise build issues
+RUN pip install --no-cache-dir "numpy==1.24.3" "Cython<3.0" && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY api/ ./api/
