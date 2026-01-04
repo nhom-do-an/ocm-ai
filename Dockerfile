@@ -14,9 +14,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-# Install numpy and Cython first to avoid scikit-surprise build issues
-RUN pip install --no-cache-dir "numpy==1.24.3" "Cython<3.0" && \
-    pip install --no-cache-dir -r requirements.txt
+# Increase timeout and install in steps to avoid network issues
+RUN pip install --default-timeout=100 --no-cache-dir "numpy==1.24.3" "Cython<3.0" && \
+    pip install --default-timeout=100 --no-cache-dir --retries 5 -r requirements.txt
 
 # Copy application code
 COPY api/ ./api/
