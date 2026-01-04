@@ -31,8 +31,9 @@ ENV PYTHONPATH=/app
 ENV FLASK_APP=training_service.py
 ENV FLASK_ENV=production
 
-# Expose port
-EXPOSE 5001
+# Expose port (can be overridden by SERVICE_PORT env var)
+ARG SERVICE_PORT=5001
+EXPOSE ${SERVICE_PORT}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
