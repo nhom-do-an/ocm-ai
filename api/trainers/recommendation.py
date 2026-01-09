@@ -34,7 +34,7 @@ class InteractionDataset(Dataset):
         # Prepare data
         self.users = torch.LongTensor([self.user_to_idx[uid] for uid in interactions_df['user_id']])
         self.items = torch.LongTensor([self.item_to_idx[iid] for iid in interactions_df['item_id']])
-        self.ratings = torch.FloatTensor(interactions_df['weight'].values)
+        self.ratings = torch.FloatTensor(interactions_df['weight'].astype(np.float32).values)
 
     def __len__(self):
         return len(self.interactions)
